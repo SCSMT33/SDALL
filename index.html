@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shootday Sales Pulse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f4f4f1;
+  --surface: #fcfcfb;
+  --surface-2: #efeee9;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --accent: #2a78d6;
+  --accent-wash: rgba(42, 120, 214, 0.10);
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --neutral-bar: #b9b8b0;
+  --good: #006300;
+  --bad: #d03b3b;
+  --chip: #e8e7e1;
+  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04);
+  --font: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232322;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5;
+    --accent-wash: rgba(57, 135, 229, 0.16);
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --neutral-bar: #5a5a56;
+    --good: #0ca30c;
+    --bad: #e66767;
+    --chip: #2a2a28;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #232322;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --accent: #3987e5;
+  --accent-wash: rgba(57, 135, 229, 0.16);
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --neutral-bar: #5a5a56;
+  --good: #0ca30c;
+  --bad: #e66767;
+  --chip: #2a2a28;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.45 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* ---------- Header ---------- */
+.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  background: var(--page);
+  border-bottom: 1px solid var(--border);
+}
+.wrap { max-width: 1320px; margin: 0 auto; padding-inline: 20px; }
+.bar1 {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding-block: 12px 10px;
+}
+.brand { display: flex; align-items: baseline; gap: 8px; margin-right: 8px; }
+.brand b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+.tabs button {
+  border: 0; background: transparent; padding: 7px 12px; border-radius: 8px;
+  font-weight: 500; color: var(--ink-2);
+}
+.tabs button:hover { background: var(--surface-2); }
+.tabs button.on { background: var(--ink); color: var(--page); }
+.data-status { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px; background: var(--chip);
+  font-size: 12px; color: var(--ink-2); white-space: nowrap;
+}
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.pill.ok i { background: var(--good); }
+.btn {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+  padding: 6px 12px; font-weight: 500; font-size: 13px;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+
+.filters {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+  padding-block: 0 12px;
+}
+.fgroup { display: flex; align-items: center; gap: 8px; }
+.flabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.seg {
+  display: inline-flex; background: var(--surface-2); border-radius: 8px; padding: 2px; flex-wrap: wrap;
+}
+.seg button {
+  border: 0; background: transparent; padding: 4px 10px; border-radius: 6px;
+  font-size: 13px; color: var(--ink-2); white-space: nowrap;
+}
+.seg button:hover { color: var(--ink); }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--border), var(--shadow); font-weight: 600; }
+.custom-dates { display: inline-flex; gap: 6px; align-items: center; }
+.custom-dates input {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 3px 6px; font-size: 13px;
+}
+
+/* ---------- Main ---------- */
+main { padding-block: 20px 60px; }
+.tabpane { display: grid; gap: 18px; }
+.sechead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sechead h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.sechead p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; box-shadow: var(--shadow); min-width: 0;
+}
+.card h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.card .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.cardhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* KPI tiles */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .tiles, .tiles.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .tiles, .tiles.three { grid-template-columns: minmax(0, 1fr); } }
+.tile {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px 12px; text-align: left; display: grid; gap: 4px; box-shadow: var(--shadow);
+  position: relative; min-width: 0;
+}
+button.tile:hover { border-color: var(--axis); }
+.tile.sel { box-shadow: 0 0 0 2px var(--accent); border-color: transparent; }
+.tile .tl { font-size: 13px; color: var(--ink-2); font-weight: 500; display: flex; justify-content: space-between; align-items: baseline; gap: 2px 8px; flex-wrap: wrap; }
+.tile .tl em { font-style: normal; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.tile .tv { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.tile .tc { font-size: 12px; color: var(--muted); }
+.tile .trow { display: flex; justify-content: space-between; align-items: flex-end; gap: 4px 8px; margin-top: 4px; flex-wrap: wrap; min-width: 0; }
+.delta { font-size: 12px; font-weight: 600; display: inline-flex; gap: 3px; align-items: center; white-space: nowrap; }
+.delta.good { color: var(--good); }
+.delta.bad { color: var(--bad); }
+.delta.flat { color: var(--muted); font-weight: 500; }
+.delta .vs { font-weight: 400; color: var(--muted); margin-left: 4px; }
+.tiles.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1200px) { .tiles.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .tiles.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .tiles.five { grid-template-columns: minmax(0, 1fr); } }
+.spark { width: 96px; height: 28px; flex: none; margin-left: auto; }
+.tile.soon { border-style: dashed; background: transparent; box-shadow: none; }
+.tile.soon .tv { color: var(--muted); font-size: 18px; font-weight: 500; }
+
+/* Chart */
+.chartbox { position: relative; height: 320px; }
+.chartbox.short { height: 260px; }
+.linkbtn { border: 0; background: transparent; color: var(--accent); font-size: 12.5px; padding: 0; font-weight: 500; }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Funnel & reasons */
+.hbars { display: grid; gap: 10px; }
+.hb { display: grid; grid-template-columns: 150px minmax(0, 1fr) 118px; gap: 10px; align-items: center; }
+@media (max-width: 520px) { .hb { grid-template-columns: 100px minmax(0, 1fr) 92px; } }
+.hb .hl { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb .track { height: 14px; background: transparent; position: relative; }
+.hb .fill { height: 100%; border-radius: 0 4px 4px 0; background: var(--accent); min-width: 2px; }
+.hb .fill.neutral { background: var(--neutral-bar); }
+.hb .hv { font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.hb .hv small { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.reason-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+@media (max-width: 640px) { .reason-cols { grid-template-columns: minmax(0, 1fr); } }
+.reason-cols h4 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.reason-cols .hb { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 52px; }
+
+/* Tables */
+.tablewrap { overflow-x: auto; margin-inline: -4px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--grid); }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+th:first-child, td:first-child { text-align: left; }
+tbody tr.person { cursor: pointer; }
+tbody tr.person:hover td { background: var(--surface-2); }
+tbody tr.focus td { background: var(--accent-wash); }
+tr.grouprow td { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; background: transparent !important; padding-top: 16px; }
+tr.totalrow td { font-weight: 600; border-top: 1px solid var(--axis); }
+td .n { color: var(--muted); font-size: 12px; margin-left: 5px; }
+td.small { color: var(--muted); }
+td .who { font-weight: 500; }
+.chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--chip); color: var(--ink-2); margin-left: 6px; font-weight: 500; }
+.soon-cell { color: var(--muted); font-style: italic; }
+
+/* Notes & empty */
+.note { font-size: 12.5px; color: var(--muted); }
+.note b { color: var(--ink-2); font-weight: 600; }
+.banner {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 10px;
+  background: var(--surface-2); color: var(--ink-2); font-size: 13px;
+}
+.empty {
+  border: 1.5px dashed var(--axis); border-radius: 14px; padding: 36px 24px; text-align: center; background: var(--surface);
+  display: grid; gap: 14px; justify-items: center;
+}
+.empty h2 { margin: 0; font-size: 22px; font-weight: 600; text-wrap: balance; }
+.empty p { margin: 0; color: var(--ink-2); max-width: 60ch; }
+.filecards { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 12px; text-align: left; }
+@media (max-width: 600px) { .filecards { grid-template-columns: minmax(0, 1fr); } }
+.filecard { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--page); }
+.filecard b { display: block; margin-bottom: 2px; }
+.filecard span { color: var(--muted); font-size: 12.5px; }
+.dropveil {
+  position: fixed; inset: 0; z-index: 50; background: rgba(42, 120, 214, 0.12);
+  border: 3px dashed var(--accent); display: grid; place-items: center; pointer-events: none;
+}
+.dropveil div { background: var(--surface); padding: 16px 22px; border-radius: 12px; font-weight: 600; box-shadow: 0 8px 30px rgba(0,0,0,.15); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.datatable { margin-top: 12px; max-height: 320px; overflow: auto; }
+.datatable table td, .datatable table th { padding: 5px 8px; font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="bar1">
+      <div class="brand"><b>shootday</b><span>Sales Pulse</span></div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="overview">Overview</button>
+        <button data-tab="sdr">SDRs</button>
+        <button data-tab="ae">AEs</button>
+        <button data-tab="habits">Habits</button>
+      </nav>
+      <div class="data-status">
+        <span class="pill" id="pillAirtable"><i></i>Airtable: not loaded</span>
+        <span class="pill" id="pillAircall"><i></i>Aircall: not loaded</span>
+        <button class="btn primary" id="loadBtn">Load files</button>
+        <button class="btn ghost" id="clearBtn" hidden>Clear</button>
+        <input type="file" id="fileInput" accept=".csv,text/csv" multiple hidden>
+      </div>
+    </div>
+    <div class="filters">
+      <div class="fgroup">
+        <span class="flabel">Dates</span>
+        <div class="seg" data-key="date">
+          <button data-v="month">This month</button>
+          <button data-v="lastmonth">Last month</button>
+          <button data-v="90">Last 90 days</button>
+          <button data-v="year">This year</button>
+          <button data-v="all">All time</button>
+          <button data-v="custom">Custom</button>
+        </div>
+        <span class="custom-dates" id="customDates" hidden>
+          <input type="date" id="dateFrom" aria-label="From date">
+          <span class="note">to</span>
+          <input type="date" id="dateTo" aria-label="To date">
+        </span>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Leads</span>
+        <div class="seg" data-key="b2b"><button data-v="true">B2B only</button><button data-v="false">All leads</button></div>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Desk</span>
+        <div class="seg" data-key="desk"><button data-v="all">All</button><button data-v="US">US</button><button data-v="OUS">OUS</button></div>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Refunds</span>
+        <div class="seg" data-key="refunds"><button data-v="false">Leave out</button><button data-v="true">Include</button></div>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Repeat clients</span>
+        <div class="seg" data-key="repeat"><button data-v="true">Include</button><button data-v="false">Leave out</button></div>
+      </div>
+      <div class="fgroup">
+        <span class="flabel">Group by</span>
+        <div class="seg" data-key="group"><button data-v="week">Week</button><button data-v="month">Month</button></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="emptyState" class="empty" hidden>
+    <h2>Drop your two exports anywhere on this page</h2>
+    <p>The dashboard reads the files right here in your browser. Nothing is uploaded. It remembers the last files you loaded, so next time it opens with your data.</p>
+    <div class="filecards">
+      <div class="filecard"><b>Airtable export</b><span>All leads. Powers revenue, AOV, Lead→Deal % and Meeting Done %.</span></div>
+      <div class="filecard"><b>Aircall export</b><span>Call history. Powers the Habits tab: coverage, speed to first call, second-day calls.</span></div>
+    </div>
+    <button class="btn primary" id="loadBtn2">Choose files</button>
+  </section>
+
+  <!-- OVERVIEW -->
+  <section class="tabpane" id="pane-overview" hidden>
+    <div class="sechead">
+      <div>
+        <h2>Top numbers</h2>
+        <p id="ovRangeNote"></p>
+      </div>
+      <div class="seg" data-key="view">
+        <button data-v="all">Whole team</button><button data-v="sdr">SDRs</button><button data-v="ae">AEs</button>
+      </div>
+    </div>
+    <div class="tiles" id="ovTiles"></div>
+    <div class="card">
+      <div class="cardhead">
+        <div>
+          <h3 id="ovChartTitle"></h3>
+          <div class="sub" id="ovChartSub"></div>
+        </div>
+        <div class="controls">
+          <span class="flabel">Split</span>
+          <div class="seg" data-key="split">
+            <button data-v="none">None</button><button data-v="role">SDR-led vs AE-direct</button><button data-v="desk">US vs OUS</button>
+          </div>
+          <button class="linkbtn" data-toggle-table="ov">Show table</button>
+        </div>
+      </div>
+      <div class="legend" id="ovLegend"></div>
+      <div class="chartbox"><canvas id="ovChart" aria-label="Metric over time"></canvas></div>
+      <div class="datatable" id="ovTable" hidden></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="cardhead"><div><h3>Funnel</h3><div class="sub">Leads created in the date range, and how far they got</div></div></div>
+        <div class="hbars" id="ovFunnel"></div>
+        <p class="note" id="ovFunnelNote"></p>
+      </div>
+      <div class="card">
+        <div class="cardhead"><div><h3>Why leads drop out</h3><div class="sub">Top reasons, leads created in the date range</div></div></div>
+        <div class="reason-cols">
+          <div><h4>Lost</h4><div class="hbars" id="ovLost"></div></div>
+          <div><h4>Disqualified</h4><div class="hbars" id="ovDq"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SDRS -->
+  <section class="tabpane" id="pane-sdr" hidden>
+    <div class="sechead">
+      <div><h2>SDR team</h2><p>SDR-led leads (the lead has an SDR Owner). Leads created in the date range.</p></div>
+    </div>
+    <div class="tiles" id="sdrTiles"></div>
+    <div class="card">
+      <div class="cardhead">
+        <div><h3>Per SDR</h3><div class="sub">Click a row to highlight that person in the chart below</div></div>
+      </div>
+      <div class="tablewrap" id="sdrTable"></div>
+    </div>
+    <div class="card">
+      <div class="cardhead">
+        <div><h3 id="sdrChartTitle"></h3><div class="sub">One line per SDR, by lead creation date</div></div>
+        <div class="controls">
+          <div class="seg" data-key="sdrMetric">
+            <button data-v="md">Meeting Done %</button><button data-v="l2d">Lead→Deal %</button><button data-v="nr">Non-Response %</button>
+          </div>
+          <button class="linkbtn" data-toggle-table="sdr">Show table</button>
+        </div>
+      </div>
+      <div class="legend" id="sdrLegend"></div>
+      <div class="chartbox"><canvas id="sdrChart" aria-label="SDR metric over time"></canvas></div>
+      <div class="datatable" id="sdrDataTable" hidden></div>
+    </div>
+  </section>
+
+  <!-- AES -->
+  <section class="tabpane" id="pane-ae" hidden>
+    <div class="sechead">
+      <div><h2>Account Executives</h2><p>Meeting Done % and Lead→Deal % use AE-direct leads only. Revenue counts every deal the AE closed.</p></div>
+    </div>
+    <div class="tiles" id="aeTiles"></div>
+    <div class="card">
+      <div class="cardhead">
+        <div><h3>Per AE</h3><div class="sub">Compare within a desk. Click a row to see that AE's trend and lost reasons.</div></div>
+      </div>
+      <div class="tablewrap" id="aeTable"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="cardhead">
+          <div><h3 id="aeChartTitle"></h3><div class="sub">Date range total, grouped by desk</div></div>
+        </div>
+        <div class="seg" data-key="aeMetric" style="margin-bottom:10px">
+          <button data-v="rev">Revenue</button><button data-v="aov">AOV</button><button data-v="md">Meeting Done %</button><button data-v="l2d">Lead→Deal %</button><button data-v="m2c">Meeting→Close %</button>
+        </div>
+        <div class="legend" id="aeLegend"></div>
+        <div class="chartbox short"><canvas id="aeChart" aria-label="AE comparison"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><div><h3 id="aeFocusTitle"></h3><div class="sub" id="aeFocusSub"></div></div></div>
+        <div class="legend" id="aeFocusLegend"></div>
+        <div class="chartbox short"><canvas id="aeFocusChart" aria-label="AE trend"></canvas></div>
+        <h4 class="flabel" style="margin:16px 0 10px">Lost reasons</h4>
+        <div class="hbars" id="aeLost"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HABITS -->
+  <section class="tabpane" id="pane-habits" hidden>
+    <div class="sechead">
+      <div><h2>Habits</h2><p id="habitsNote">Calls from the Aircall export, matched to leads by phone number.</p></div>
+      <div class="seg" data-key="view">
+        <button data-v="all">Whole team</button><button data-v="sdr">SDRs</button><button data-v="ae">AEs</button>
+      </div>
+    </div>
+    <div class="banner" id="habitsBanner" hidden></div>
+    <div class="tiles" id="habitTiles"></div>
+    <div class="card">
+      <div class="cardhead"><div><h3>Per person</h3><div class="sub">SDRs are measured on SDR-led leads, AEs on their AE-direct leads</div></div></div>
+      <div class="tablewrap" id="habitTable"></div>
+    </div>
+    <div class="card">
+      <div class="cardhead"><div><h3>Median time to first call</h3><div class="sub">Lower is better. Leads that got at least one call.</div></div></div>
+      <div class="legend" id="habitLegend"></div>
+      <div class="chartbox short"><canvas id="habitChart" aria-label="Median time to first call per person"></canvas></div>
+    </div>
+  </section>
+</main>
+
+<div class="dropveil" id="dropVeil" hidden><div>Drop the Airtable and/or Aircall CSV</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+"use strict";
+
+/* ================= CONFIG (edit here) ================= */
+// Current team. Anyone not listed counts in totals but is hidden from the people tables.
+const ROSTER = [
+  { name: "MJ Montero",        role: "SDR", desk: "US" },
+  { name: "Gospel Lim",        role: "SDR", desk: "US" },
+  { name: "Mark Paolo Santos", role: "SDR", desk: "OUS" },
+  { name: "Levi Ceballos",     role: "SDR", desk: "OUS" },
+  { name: "Andrew Thomas",     role: "AE",  desk: "US",  chip: "Senior book" },
+  { name: "Khalil Khodor",     role: "AE",  desk: "US" },
+  { name: "Savio Obeid",       role: "AE",  desk: "US" },
+  { name: "Stephan Moubarak",  role: "AE",  desk: "US" },
+  { name: "Firas Azar",        role: "AE",  desk: "OUS", chip: "Benchmark" },
+  { name: "Elie El Khoury",    role: "AE",  desk: "OUS" },
+  { name: "Sinar Knayzeh",     role: "AE",  desk: "OUS" },
+];
+// Different spellings of the same person (lowercase key -> roster name).
+const ALIASES = { "mark santos": "Mark Paolo Santos" };
+const AIRTABLE_TZ_OFFSET_H = 3;      // Airtable times are UTC+3, Aircall is UTC
+const CALL_LOOKAHEAD_DAYS = 14;      // calls counted for a lead up to this many days after it came in
+const SMALL_SAMPLE = 20;             // fewer leads than this = greyed "small sample"
+const REFUND_STATUSES = ["deposit refund", "full refund", "partial refund"];
+const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qualified_sdr", "qualified sdr", "cold", "warm", "hot", "non respondant", "quote sent", "potential deal", ""];
+
+/* ================= STATE ================= */
+const DEFAULTS = {
+  tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
+  refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
+  sdrMetric: "md", aeMetric: "rev", focusSDR: null, focusAE: null,
+};
+const S = Object.assign({}, DEFAULTS, loadPrefs());
+const SHOW_TABLE = { ov: false, sdr: false };
+let LEADS = [], CALLS = [], META = { airtable: null, aircall: null };
+let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
+// Older history in the export only has closed deals. Percentages only count from the month every lead is present.
+let FULL_START = null;
+const CHARTS = {};
+const ROSTER_BY_NAME = new Map(ROSTER.map(p => [p.name, p]));
+const SDRS = ROSTER.filter(p => p.role === "SDR");
+const AES = ROSTER.filter(p => p.role === "AE");
+
+function loadPrefs() {
+  try { const p = JSON.parse(localStorage.getItem("sdall-prefs") || "{}"); delete p.focusSDR; delete p.focusAE; return p; }
+  catch (e) { return {}; }
+}
+function savePrefs() { try { localStorage.setItem("sdall-prefs", JSON.stringify(S)); } catch (e) {} }
+
+/* ================= HELPERS ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+const MON_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function titleCase(s) { return s.toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase()); }
+function normName(raw) {
+  const s = String(raw || "").trim().replace(/\s+/g, " ");
+  if (!s) return "";
+  const k = s.toLowerCase();
+  if (ALIASES[k]) return ALIASES[k];
+  for (const p of ROSTER) if (p.name.toLowerCase() === k) return p.name;
+  return titleCase(s);
+}
+function phone9(raw) { const d = String(raw || "").replace(/\D/g, ""); return d.length >= 7 ? d.slice(-9) : ""; }
+// Airtable "2026-09-11 10:32"
+function parseISOish(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(String(s || "").trim());
+  if (!m) return null;
+  return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
+}
+// "September 11, 2026 11:10" / "June 9, 2026 8:08pm"
+function parseLongDate(s) {
+  s = String(s || "").trim();
+  if (!s) return null;
+  const m = /^([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*([ap]m)?)?/i.exec(s);
+  if (m) {
+    const mi = MONTHS.indexOf(m[1].toLowerCase());
+    if (mi < 0) return null;
+    let h = +(m[4] || 0);
+    if (m[6]) { const pm = m[6].toLowerCase() === "pm"; if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
+    return new Date(+m[3], mi, +m[2], h, +(m[5] || 0));
+  }
+  return parseISOish(s);
+}
+function toUTCms(d, offsetH) { return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()) - offsetH * 3600e3; }
+function reasonKey(s) { return String(s || "").toLowerCase().replace(/[^a-z]/g, ""); }
+
+const fmtInt = n => n == null ? "—" : Math.round(n).toLocaleString("en-US");
+function money(n, compact) {
+  if (n == null || !isFinite(n)) return "—";
+  if (compact || Math.abs(n) >= 100000) {
+    if (Math.abs(n) >= 1e6) return "$" + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2) + "M";
+    if (Math.abs(n) >= 1e3) return "$" + (n / 1e3).toFixed(n >= 1e5 ? 0 : 1) + "K";
+  }
+  return "$" + Math.round(n).toLocaleString("en-US");
+}
+function pct(x, dp = 1) { return x == null || !isFinite(x) ? "—" : (x * 100).toFixed(dp) + "%"; }
+function dur(min) {
+  if (min == null || !isFinite(min)) return "—";
+  if (min < 60) return Math.round(min) + " min";
+  if (min < 48 * 60) return (min / 60).toFixed(1) + " h";
+  return (min / 1440).toFixed(1) + " days";
+}
+function median(a) { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); const i = s.length >> 1; return s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2; }
+function fmtDate(d) { return MON_SHORT[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear(); }
+function ymd(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+
+/* ================= LOADING ================= */
+function stripBOM(t) { return t.charCodeAt(0) === 0xfeff ? t.slice(1) : t; }
+function detectKind(text) {
+  const head = stripBOM(text).slice(0, 3000).toLowerCase();
+  if (head.includes("sdr owner") || head.includes("sales status")) return "airtable";
+  if (head.includes("customer number") || head.includes("call id") || head.includes("datetime (utc)")) return "aircall";
+  return null;
+}
+async function handleFiles(files) {
+  let loaded = 0, unknown = [];
+  for (const f of files) {
+    const text = await f.text();
+    const kind = detectKind(text);
+    if (!kind) { unknown.push(f.name); continue; }
+    ingest(kind, text, f.name, Date.now());
+    idbPut(kind, { name: f.name, text, at: Date.now() });
+    loaded++;
+  }
+  if (unknown.length) showToast("Couldn't recognise " + unknown.join(", ") + ". Use the Airtable leads export or the Aircall call history export.");
+  if (loaded) { joinCalls(); render(); }
+}
+function ingest(kind, text, name, at) {
+  const rows = Papa.parse(stripBOM(text), { header: true, skipEmptyLines: true }).data;
+  if (kind === "airtable") { LEADS = buildLeads(rows); META.airtable = { name, at, n: LEADS.length }; }
+  else { CALLS = buildCalls(rows); META.aircall = { name, at, n: CALLS.length }; }
+}
+
+function buildLeads(rows) {
+  const out = [];
+  for (const r of rows) {
+    const created = parseISOish(r["Creation Date"]);
+    if (!created) continue;
+    const statusRaw = String(r["Sales status"] || "").trim();
+    const status = statusRaw.toLowerCase();
+    const dqReason = String(r["Disqualified reason"] || "").trim();
+    const lostReason = String(r["Lost reason"] || "").trim();
+    const sdr = normName(r["SDR Owner"]);
+    const ae = normName(r["Owner"]);
+    const region = String(r["Region"] || "").trim().toUpperCase();
+    let desk = null;
+    if (ROSTER_BY_NAME.has(ae)) desk = ROSTER_BY_NAME.get(ae).desk;
+    else if (ROSTER_BY_NAME.has(sdr)) desk = ROSTER_BY_NAME.get(sdr).desk;
+    else desk = region === "NA" ? "US" : "OUS";
+    const price = parseFloat(String(r["Price AED"] || "").replace(/[^0-9.\-]/g, "")) || 0; // USD despite the label
+    let closed = parseLongDate(r["Closed date"]);
+    const isClosedStatus = status === "closed";
+    const isRefund = REFUND_STATUSES.includes(status);
+    if ((isClosedStatus || isRefund) && !closed) closed = created;
+    let bucket;
+    if (isClosedStatus) bucket = "closed";
+    else if (isRefund) bucket = "refund";
+    else if (status === "lost") bucket = "lost";
+    else if (status === "disqualified" && reasonKey(dqReason) === "notresponsive") bucket = "nonresp";
+    else if (status.startsWith("disqualified")) bucket = "dq";
+    else bucket = "open";
+    out.push({
+      created, closed, status: statusRaw, bucket, price, sdr, ae, desk,
+      b2b: String(r["is_business_lead"] || "").trim().toLowerCase() === "checked",
+      md: String(r["Meeting Status"] || "").trim().toLowerCase() === "meeting done",
+      aeRejected: status.startsWith("disqualified ae"),
+      dqReason, lostReason,
+      email: String(r["Email"] || "").trim().toLowerCase(),
+      ph: phone9(r["Phone"]),
+      repeat: false, calls: null,
+    });
+  }
+  // Repeat client = same email already had an earlier closed lead.
+  out.sort((a, b) => a.created - b.created);
+  const firstClose = new Map();
+  for (const L of out) {
+    if (!L.email) continue;
+    const fc = firstClose.get(L.email);
+    if (fc != null && fc < L.created) L.repeat = true;
+    if ((L.bucket === "closed" || L.bucket === "refund") && fc == null) firstClose.set(L.email, L.created);
+  }
+  // First month where at least 30% of leads are not closed = the export has every lead from there on.
+  const byMonth = new Map();
+  for (const L of out) {
+    const k = L.created.getFullYear() * 12 + L.created.getMonth();
+    const m = byMonth.get(k) || { n: 0, open: 0 }; m.n++;
+    if (L.bucket !== "closed" && L.bucket !== "refund") m.open++;
+    byMonth.set(k, m);
+  }
+  FULL_START = null;
+  for (const [k, m] of [...byMonth].sort((x, y) => x[0] - y[0])) {
+    if (m.n >= 20 && m.open / m.n >= 0.3) { FULL_START = new Date(Math.floor(k / 12), k % 12, 1); break; }
+  }
+  return out;
+}
+
+function buildCalls(rows) {
+  const out = [];
+  for (const r of rows) {
+    const utc = String(r["datetime (utc)"] || "").trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/.exec(utc);
+    if (!m) continue;
+    const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+    const dir = String(r["direction"] || "").trim().toLowerCase();
+    out.push({
+      t, dir,
+      user: normName(r["user"]),
+      ph: phone9(r["customer number"] || (dir === "inbound" ? r["from"] : r["to"])),
+      answered: String(r["answered"] || "").toLowerCase() === "yes",
+      talk: +r["duration (in call)"] || 0,
+    });
+  }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+
+function joinCalls() {
+  CALLS_BY_PHONE = new Map(); CALL_USERS = new Set(); CALL_WINDOW = null;
+  for (const L of LEADS) L.calls = null;
+  if (!CALLS.length) return;
+  for (const c of CALLS) {
+    if (c.dir !== "outbound" || !c.ph) continue;
+    CALL_USERS.add(c.user);
+    if (!CALLS_BY_PHONE.has(c.ph)) CALLS_BY_PHONE.set(c.ph, []);
+    CALLS_BY_PHONE.get(c.ph).push(c.t);
+  }
+  CALL_WINDOW = { start: CALLS[0].t, end: CALLS[CALLS.length - 1].t };
+  const look = CALL_LOOKAHEAD_DAYS * 86400e3, tol = 10 * 60e3;
+  for (const L of LEADS) {
+    const lt = toUTCms(L.created, AIRTABLE_TZ_OFFSET_H);
+    L.utc = lt;
+    const arr = L.ph ? CALLS_BY_PHONE.get(L.ph) : null;
+    const hits = [];
+    if (arr) for (const t of arr) { if (t >= lt - tol && t <= lt + look) hits.push(t); }
+    L.calls = hits;
+  }
+}
+
+/* IndexedDB: remembers the last files loaded (stays in this browser only) */
+function idb() {
+  return new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open("sdall", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("files");
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  });
+}
+async function idbPut(k, v) { try { const db = await idb(); db.transaction("files", "readwrite").objectStore("files").put(v, k); } catch (e) {} }
+async function idbGet(k) {
+  try { const db = await idb(); return await new Promise(res => { const q = db.transaction("files").objectStore("files").get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); }
+  catch (e) { return null; }
+}
+async function idbClear() { try { const db = await idb(); db.transaction("files", "readwrite").objectStore("files").clear(); } catch (e) {} }
+
+/* ================= FILTERS & MATH ================= */
+function getRange() {
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  const tomorrow = new Date(y, m, d + 1);
+  let r;
+  switch (S.date) {
+    case "month": r = { start: new Date(y, m, 1), end: tomorrow }; break;
+    case "lastmonth": r = { start: new Date(y, m - 1, 1), end: new Date(y, m, 1) }; break;
+    case "90": r = { start: new Date(y, m, d - 89), end: tomorrow }; break;
+    case "all": r = { start: LEADS.length ? new Date(LEADS[0].created.getFullYear(), LEADS[0].created.getMonth(), 1) : new Date(y, 0, 1), end: tomorrow }; break;
+    case "custom": {
+      const f = S.from ? new Date(S.from + "T00:00") : new Date(y, 0, 1);
+      const t = S.to ? new Date(S.to + "T00:00") : new Date(y, m, d);
+      r = { start: f, end: new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1) }; break;
+    }
+    default: r = { start: new Date(y, 0, 1), end: tomorrow };
+  }
+  if (S.date === "lastmonth") r.prev = { start: new Date(y, m - 2, 1), end: new Date(y, m - 1, 1) };
+  else if (S.date === "year") r.prev = { start: new Date(y - 1, 0, 1), end: new Date(y - 1, m, d + 1) };
+  else if (S.date === "month") r.prev = { start: new Date(y, m - 1, 1), end: new Date(y, m - 1, d + 1) };
+  else if (S.date !== "all") { const len = r.end - r.start; r.prev = { start: new Date(r.start - len), end: r.start }; }
+  r.prevLabel = S.date === "year" ? "last year" : S.date === "month" || S.date === "lastmonth" ? "last month" : "prev. period";
+  return r;
+}
+const inR = (d, r) => d && d >= r.start && d < r.end;
+const isClosed = L => L.bucket === "closed" || (S.refunds && L.bucket === "refund");
+
+function baseLeads() {
+  return LEADS.filter(L =>
+    (!S.b2b || L.b2b) &&
+    (S.desk === "all" || L.desk === S.desk) &&
+    (S.repeat || !L.repeat));
+}
+function viewFilter(leads, view) {
+  if (view === "sdr") return leads.filter(L => L.sdr);
+  if (view === "ae") return leads.filter(L => !L.sdr);
+  return leads;
+}
+function emptyAcc() { return { n: 0, md: 0, cl: 0, nr: 0, aer: 0, mdc: 0, deals: 0, rev: 0 }; }
+function addCohort(a, L) {
+  if (FULL_START && L.created < FULL_START) return;
+  a.n++; if (L.md) a.md++;
+  const c = isClosed(L);
+  if (c) a.cl++;
+  if (L.md && c) a.mdc++;
+  if (L.bucket === "nonresp") a.nr++;
+  if (L.aeRejected) a.aer++;
+}
+function addDeal(a, L) { a.deals++; a.rev += L.price; }
+function accumulate(leads, r) {
+  const a = emptyAcc();
+  for (const L of leads) {
+    if (inR(L.created, r)) addCohort(a, L);
+    if (isClosed(L) && inR(L.closed, r)) addDeal(a, L);
+  }
+  return a;
+}
+const METRICS = {
+  rev: { label: "Revenue", kind: "money", good: 1, val: a => a.deals ? a.rev : 0, cap: a => `${fmtInt(a.deals)} deals closed`, basis: "close" },
+  aov: { label: "Average order value", kind: "money", good: 1, val: a => a.deals ? a.rev / a.deals : null, cap: a => `Revenue ÷ ${fmtInt(a.deals)} deals`, basis: "close" },
+  l2d: { label: "Lead→Deal %", kind: "pct", good: 1, val: a => a.n ? a.cl / a.n : null, cap: a => `${fmtInt(a.cl)} of ${fmtInt(a.n)} leads closed`, basis: "created" },
+  md:  { label: "Meeting Done %", kind: "pct", good: 1, val: a => a.n ? a.md / a.n : null, cap: a => `${fmtInt(a.md)} of ${fmtInt(a.n)} leads had a meeting`, basis: "created" },
+  nr:  { label: "Non-Response %", kind: "pct", good: -1, val: a => a.n ? a.nr / a.n : null, cap: a => `${fmtInt(a.nr)} of ${fmtInt(a.n)} leads never responded`, basis: "created" },
+  m2c: { label: "Meeting→Close %", kind: "pct", good: 1, val: a => a.md ? a.mdc / a.md : null, cap: a => `${fmtInt(a.mdc)} of ${fmtInt(a.md)} meetings closed`, basis: "created" },
+};
+function fmtMetric(k, v, compact) { return METRICS[k].kind === "money" ? money(v, compact) : pct(v); }
+
+/* Time buckets */
+function bucketStart(d) {
+  if (S.group === "month") return new Date(d.getFullYear(), d.getMonth(), 1);
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+function nextBucket(d) { return S.group === "month" ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7); }
+function bucketLabel(d) { return S.group === "month" ? MON_SHORT[d.getMonth()] + " " + String(d.getFullYear()).slice(2) : MON_SHORT[d.getMonth()] + " " + d.getDate(); }
+function bucketsBetween(start, end) {
+  const out = []; let d = bucketStart(start);
+  while (d < end && out.length < 600) { out.push(d); d = nextBucket(d); }
+  return out;
+}
+// Returns Map(splitValue -> array of accs aligned to buckets)
+function series(leads, buckets, splitFn) {
+  const idx = new Map(buckets.map((b, i) => [b.getTime(), i]));
+  const first = buckets[0], last = nextBucket(buckets[buckets.length - 1]);
+  const out = new Map();
+  const get = k => { if (!out.has(k)) out.set(k, buckets.map(emptyAcc)); return out.get(k); };
+  for (const L of leads) {
+    const k = splitFn(L);
+    if (k == null) continue;
+    if (L.created >= first && L.created < last) { const i = idx.get(bucketStart(L.created).getTime()); if (i != null) addCohort(get(k)[i], L); }
+    if (isClosed(L) && L.closed >= first && L.closed < last) { const i = idx.get(bucketStart(L.closed).getTime()); if (i != null) addDeal(get(k)[i], L); }
+  }
+  return out;
+}
+
+/* ================= RENDER: shared pieces ================= */
+function deltaHTML(k, cur, prev, prevLabel) {
+  if (cur == null || prev == null || !isFinite(cur) || !isFinite(prev)) return `<span class="delta flat">No comparison</span>`;
+  const m = METRICS[k] || HABIT_METRICS[k];
+  let diff, txt;
+  if (m.kind === "pct") { diff = (cur - prev) * 100; txt = (diff >= 0 ? "+" : "") + diff.toFixed(1) + " pts"; }
+  else { if (!prev) return `<span class="delta flat">No comparison</span>`; diff = (cur - prev) / prev * 100; txt = (diff >= 0 ? "+" : "") + diff.toFixed(0) + "%"; }
+  if (Math.abs(diff) < 0.05) return `<span class="delta flat" title="vs ${esc(prevLabel)}">No change</span>`;
+  const good = (diff > 0) === (m.good > 0);
+  const arrow = diff > 0 ? "▲" : "▼";
+  return `<span class="delta ${good ? "good" : "bad"}" title="Compared with the same stretch of ${esc(prevLabel)}">${arrow} ${txt}<span class="vs">vs ${esc(prevLabel)}</span></span>`;
+}
+function sparkSVG(vals) {
+  const pts = vals.map((v, i) => [i, v]).filter(p => p[1] != null && isFinite(p[1]));
+  if (pts.length < 2) return `<svg class="spark" viewBox="0 0 110 30" aria-hidden="true"></svg>`;
+  const xs = vals.length - 1 || 1;
+  const ys = pts.map(p => p[1]); let lo = Math.min(...ys), hi = Math.max(...ys); if (hi === lo) { hi += 1; lo -= 1; }
+  const X = i => 3 + i / xs * 104, Y = v => 26 - (v - lo) / (hi - lo) * 22;
+  const d = pts.map((p, j) => (j ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1)).join(" ");
+  const lp = pts[pts.length - 1];
+  return `<svg class="spark" viewBox="0 0 110 30" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--axis)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${X(lp[0]).toFixed(1)}" cy="${Y(lp[1]).toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/></svg>`;
+}
+function sparkVals(leads, k, r) {
+  const end = r.end, lastB = bucketStart(new Date(end - 1));
+  let s = lastB; for (let i = 0; i < 11; i++) s = S.group === "month" ? new Date(s.getFullYear(), s.getMonth() - 1, 1) : new Date(s.getFullYear(), s.getMonth(), s.getDate() - 7);
+  const b = bucketsBetween(s, end);
+  const ser = series(leads, b, () => "x").get("x");
+  return ser ? ser.map(a => METRICS[k].val(a)) : [];
+}
+function tileHTML(k, a, prev, r, opts = {}) {
+  const m = METRICS[k], v = m.val(a);
+  const small = m.basis === "created" && a.n < SMALL_SAMPLE;
+  const tag = m.basis === "close" ? "by close date" : "by lead date";
+  const el = opts.selectable ? "button" : "div";
+  return `<${el} class="tile${opts.sel ? " sel" : ""}"${opts.selectable ? ` data-kpi="${k}" aria-pressed="${!!opts.sel}"` : ""}>
+    <div class="tl">${esc(opts.label || m.label)}<em>${tag}</em></div>
+    <div class="tv"${small ? ' style="color:var(--muted)" title="Small sample"' : ""}>${fmtMetric(k, v)}</div>
+    <div class="tc">${m.cap(a)}${small ? " · small sample" : ""}</div>
+    <div class="trow">${r.prev ? deltaHTML(k, v, prev ? m.val(prev) : null, r.prevLabel) : `<span class="delta flat">All time</span>`}${opts.spark ? sparkSVG(opts.spark) : ""}</div>
+  </${el}>`;
+}
+function cellPct(num, den) {
+  if (!den) return `<td class="small">—</td>`;
+  const small = den < SMALL_SAMPLE;
+  return `<td${small ? ' class="small" title="Small sample"' : ""}>${pct(num / den)}<span class="n">${fmtInt(num)}/${fmtInt(den)}</span></td>`;
+}
+function hbarsHTML(items, total, opts = {}) {
+  if (!items.length) return `<p class="note">Nothing in this range.</p>`;
+  const max = Math.max(...items.map(i => i.v), 1);
+  return items.map(i => `<div class="hb" title="${esc(i.label)}: ${fmtInt(i.v)}">
+      <div class="hl">${esc(i.label)}</div>
+      <div class="track"><div class="fill${opts.neutral ? " neutral" : ""}" style="width:${(i.v / max * 100).toFixed(1)}%"></div></div>
+      <div class="hv">${fmtInt(i.v)}${total && !opts.noPct ? `<small>${pct(i.v / total, 0)}</small>` : ""}</div>
+    </div>`).join("");
+}
+function topReasons(leads, bucket, n = 7) {
+  const map = new Map();
+  for (const L of leads) {
+    let reason;
+    if (bucket === "lost" && L.bucket === "lost") reason = L.lostReason || L.dqReason || "No reason given";
+    else if (bucket === "dq" && (L.bucket === "dq" || L.bucket === "nonresp")) reason = L.aeRejected ? "Rejected by AE" : (L.dqReason || "No reason given");
+    else continue;
+    const k = reasonKey(reason);
+    if (!map.has(k)) map.set(k, { label: reason.charAt(0).toUpperCase() + reason.slice(1), v: 0 });
+    map.get(k).v++;
+  }
+  return [...map.values()].sort((a, b) => b.v - a.v).slice(0, n);
+}
+
+/* Chart.js */
+function destroy(id) { if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; } }
+function baseOpts(yFmt, extra = {}) {
+  const ink2 = cssVar("--ink-2"), muted = cssVar("--muted"), grid = cssVar("--grid"), axis = cssVar("--axis"), surface = cssVar("--surface"), ink = cssVar("--ink");
+  return Object.assign({
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: surface, titleColor: ink, bodyColor: ink2, borderColor: axis, borderWidth: 1,
+        padding: 10, boxPadding: 4, usePointStyle: true,
+        callbacks: { label: c => ` ${c.dataset.label}: ${c.raw == null ? "—" : yFmt(c.raw)}` },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, border: { color: axis }, ticks: { color: muted, maxRotation: 0, autoSkip: true, autoSkipPadding: 12, font: { family: cssVar("--font") } } },
+      y: { beginAtZero: true, grid: { color: grid }, border: { display: false }, ticks: { color: muted, callback: v => yFmt(v), font: { family: cssVar("--font") }, maxTicksLimit: 6 } },
+    },
+  }, extra);
+}
+function legendHTML(items) { return items.length < 2 ? "" : items.map(i => `<span><i style="background:${i.color}"></i>${esc(i.label)}</span>`).join(""); }
+function dataTableHTML(labels, datasets, fmt) {
+  return `<table><thead><tr><th>Period</th>${datasets.map(d => `<th>${esc(d.label)}</th>`).join("")}</tr></thead><tbody>${labels.map((l, i) => `<tr><td>${esc(l)}</td>${datasets.map(d => `<td>${d.data[i] == null ? "—" : fmt(d.data[i])}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+function withAlpha(hex, a) { const h = hex.replace("#", ""); const n = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+const SERIES = () => [cssVar("--s1"), cssVar("--s2"), cssVar("--s3"), cssVar("--s4")];
+
+/* ================= TABS ================= */
+function render() {
+  syncControls();
+  const has = LEADS.length > 0;
+  $("emptyState").hidden = has;
+  for (const t of ["overview", "sdr", "ae", "habits"]) $("pane-" + t).hidden = !has || S.tab !== t;
+  renderStatus();
+  if (!has) return;
+  const r = getRange();
+  const base = baseLeads();
+  if (S.tab === "overview") renderOverview(base, r);
+  else if (S.tab === "sdr") renderSDR(base, r);
+  else if (S.tab === "ae") renderAE(base, r);
+  else renderHabits(base, r);
+}
+
+function renderStatus() {
+  const a = META.airtable, c = META.aircall;
+  const pa = $("pillAirtable"), pc = $("pillAircall");
+  pa.className = "pill" + (a ? " ok" : ""); pc.className = "pill" + (c ? " ok" : "");
+  if (a) {
+    const last = LEADS.length ? LEADS[LEADS.length - 1].created : null;
+    pa.innerHTML = `<i></i>Airtable: ${fmtInt(a.n)} leads${last ? " · to " + fmtDate(last) : ""}`;
+    pa.title = a.name;
+  } else pa.innerHTML = `<i></i>Airtable: not loaded`;
+  if (c) {
+    const e = CALLS.length ? new Date(CALLS[CALLS.length - 1].t) : null;
+    pc.innerHTML = `<i></i>Aircall: ${fmtInt(c.n)} calls${e ? " · to " + fmtDate(e) : ""}`;
+    pc.title = c.name;
+  } else pc.innerHTML = `<i></i>Aircall: not loaded`;
+  $("clearBtn").hidden = !(a || c);
+}
+
+function rangeText(r) { return `${fmtDate(r.start)} – ${fmtDate(new Date(r.end - 86400e3))}`; }
+
+/* ---------- Overview ---------- */
+function renderOverview(base, r) {
+  const leads = viewFilter(base, S.view);
+  const viewName = { all: "Whole team", sdr: "SDR-led leads", ae: "AE-direct leads" }[S.view];
+  $("ovRangeNote").textContent = `${viewName} · ${rangeText(r)} · ${S.b2b ? "B2B only" : "All leads"}${S.desk !== "all" ? " · " + S.desk + " desk" : ""}`;
+  const a = accumulate(leads, r), p = r.prev ? accumulate(leads, r.prev) : null;
+  $("ovTiles").innerHTML = ["rev", "aov", "l2d", "md"].map(k => tileHTML(k, a, p, r, { selectable: true, sel: S.kpi === k, spark: sparkVals(leads, k, r) })).join("");
+
+  // Main chart
+  const k = METRICS[S.kpi] ? S.kpi : "rev";
+  const m = METRICS[k];
+  const buckets = bucketsBetween(r.start, r.end);
+  const splitFns = { none: () => "All", role: L => L.sdr ? "SDR-led" : "AE-direct", desk: L => L.desk };
+  const order = { none: ["All"], role: ["SDR-led", "AE-direct"], desk: ["US", "OUS"] }[S.split];
+  const ser = series(leads, buckets, splitFns[S.split]);
+  const cols = SERIES();
+  const labels = buckets.map(bucketLabel);
+  const isRev = k === "rev";
+  const datasets = order.filter(o => ser.has(o)).map((o, i) => {
+    const col = S.split === "none" ? cols[0] : cols[i];
+    const data = ser.get(o).map(acc => m.val(acc));
+    return isRev
+      ? { label: o === "All" ? m.label : o, data, backgroundColor: col, borderColor: cssVar("--surface"), borderWidth: S.split === "none" ? 0 : { top: 2 }, borderRadius: 4, borderSkipped: "start", maxBarThickness: 24, stack: "s" }
+      : { label: o === "All" ? m.label : o, data, borderColor: col, backgroundColor: withAlpha(col, 0.10), fill: S.split === "none", borderWidth: 2, pointRadius: buckets.length > 40 ? 0 : 3, pointHoverRadius: 5, pointBackgroundColor: col, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true };
+  });
+  $("ovChartTitle").textContent = `${m.label} by ${S.group}`;
+  const fullNote = FULL_START && r.start < FULL_START ? ` Every-lead data starts ${MON_SHORT[FULL_START.getMonth()]} ${FULL_START.getFullYear()}; before that the export only has closed deals.` : "";
+  $("ovChartSub").textContent = (m.basis === "close" ? "Counted by the date the deal closed." : "Counted by the date the lead came in. Recent periods keep rising as leads close.") + (m.basis === "close" ? "" : fullNote);
+  $("ovLegend").innerHTML = legendHTML(datasets.map(d => ({ label: d.label, color: isRev ? d.backgroundColor : d.borderColor })));
+  destroy("ov");
+  const yFmt = v => fmtMetric(k, v, true);
+  const opts = baseOpts(yFmt);
+  if (isRev) { opts.scales.x.stacked = true; opts.scales.y.stacked = true; }
+  CHARTS.ov = new Chart($("ovChart"), { type: isRev ? "bar" : "line", data: { labels, datasets }, options: opts });
+  $("ovTable").hidden = !SHOW_TABLE.ov;
+  if (SHOW_TABLE.ov) $("ovTable").innerHTML = dataTableHTML(labels, datasets, v => fmtMetric(k, v));
+
+  // Funnel (leads created in range)
+  const cohort = leads.filter(L => inR(L.created, r) && !(FULL_START && L.created < FULL_START));
+  const n = cohort.length;
+  const steps = [{ label: "Leads", v: n }];
+  if (CALLS.length) steps.push({ label: "Called", v: cohort.filter(L => L.calls && L.calls.length).length });
+  steps.push({ label: "Meeting Done", v: cohort.filter(L => L.md).length });
+  steps.push({ label: "Closed", v: cohort.filter(isClosed).length });
+  $("ovFunnel").innerHTML = hbarsHTML(steps, n);
+  $("ovFunnelNote").innerHTML = CALLS.length
+    ? `"Called" uses the Aircall file, which covers <b>${fmtDate(new Date(CALL_WINDOW.start))} – ${fmtDate(new Date(CALL_WINDOW.end))}</b>${CALL_USERS.size && ![...CALL_USERS].some(u => AES.some(a => a.name === u)) ? " and only has SDR calls" : ""}. Leads outside that show as not called.`
+    : "Load the Aircall file to add a “Called” step.";
+  $("ovLost").innerHTML = hbarsHTML(topReasons(cohort, "lost"), null, { neutral: true, noPct: true });
+  $("ovDq").innerHTML = hbarsHTML(topReasons(cohort, "dq"), null, { neutral: true, noPct: true });
+}
+
+/* ---------- SDRs ---------- */
+function renderSDR(base, r) {
+  const leads = base.filter(L => L.sdr);
+  const a = accumulate(leads, r), p = r.prev ? accumulate(leads, r.prev) : null;
+  const leadsTile = `<div class="tile"><div class="tl">SDR-led leads<em>by lead date</em></div><div class="tv">${fmtInt(a.n)}</div><div class="tc">${pct(a.aer / (a.n || 1))} bounced back by an AE (${fmtInt(a.aer)})</div><div class="trow"><span class="delta flat">${p ? fmtInt(p.n) + " in " + esc(r.prevLabel) : "All time"}</span></div></div>`;
+  $("sdrTiles").innerHTML =
+    tileHTML("md", a, p, r, { spark: sparkVals(leads, "md", r) }) +
+    tileHTML("l2d", a, p, r, { spark: sparkVals(leads, "l2d", r) }) +
+    tileHTML("nr", a, p, r, { spark: sparkVals(leads, "nr", r) }) + leadsTile;
+
+  const people = SDRS.filter(s => S.desk === "all" || s.desk === S.desk);
+  const rows = people.map(s => ({ s, a: accumulate(leads.filter(L => L.sdr === s.name), r) }));
+  let html = `<table><thead><tr><th>SDR</th><th>Desk</th><th>Leads</th><th>Meeting Done %</th><th>Lead→Deal %</th><th>Non-Response %</th><th>AE-rejected %</th><th>Revenue</th><th>AOV</th></tr></thead><tbody>`;
+  for (const { s, a: x } of rows) {
+    html += `<tr class="person${S.focusSDR === s.name ? " focus" : ""}" data-sdr="${esc(s.name)}" tabindex="0">
+      <td><span class="who">${esc(s.name)}</span></td><td class="small">${s.desk}</td><td>${fmtInt(x.n)}</td>
+      ${cellPct(x.md, x.n)}${cellPct(x.cl, x.n)}${cellPct(x.nr, x.n)}${cellPct(x.aer, x.n)}
+      <td>${money(x.rev)}</td><td>${money(x.deals ? x.rev / x.deals : null)}</td></tr>`;
+  }
+  html += `<tr class="totalrow"><td>Team</td><td></td><td>${fmtInt(a.n)}</td>${cellPct(a.md, a.n)}${cellPct(a.cl, a.n)}${cellPct(a.nr, a.n)}${cellPct(a.aer, a.n)}<td>${money(a.rev)}</td><td>${money(a.deals ? a.rev / a.deals : null)}</td></tr>`;
+  html += `</tbody></table><p class="note" style="margin:10px 4px 0">Revenue and AOV count deals that closed in the date range. The same deal also shows under the AE who closed it.</p>`;
+  $("sdrTable").innerHTML = html;
+
+  // Trend chart
+  const k = S.sdrMetric, m = METRICS[k];
+  const buckets = bucketsBetween(r.start, r.end);
+  const ser = series(leads, buckets, L => SDRS.some(s => s.name === L.sdr) ? L.sdr : null);
+  const cols = SERIES();
+  const labels = buckets.map(bucketLabel);
+  const datasets = people.filter(s => ser.has(s.name)).map(s => {
+    const col = cols[SDRS.indexOf(s)];
+    const faded = S.focusSDR && S.focusSDR !== s.name;
+    const c = faded ? withAlpha(col, 0.22) : col;
+    return { label: s.name, data: ser.get(s.name).map(acc => acc.n >= 3 ? m.val(acc) : null), borderColor: c, backgroundColor: c, borderWidth: faded ? 1.5 : 2, pointRadius: buckets.length > 40 ? 0 : 3, pointHoverRadius: 5, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true, order: faded ? 2 : 1 };
+  });
+  $("sdrChartTitle").textContent = `${m.label} by ${S.group}`;
+  $("sdrLegend").innerHTML = legendHTML(datasets.map(d => ({ label: d.label, color: cols[SDRS.findIndex(s => s.name === d.label)] })));
+  destroy("sdr");
+  CHARTS.sdr = new Chart($("sdrChart"), { type: "line", data: { labels, datasets }, options: baseOpts(v => pct(v, 0)) });
+  $("sdrDataTable").hidden = !SHOW_TABLE.sdr;
+  if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, datasets, v => pct(v));
+}
+
+/* ---------- AEs ---------- */
+function aeAcc(base, name, r) {
+  const all = base.filter(L => L.ae === name);
+  const direct = all.filter(L => !L.sdr);
+  const aAll = accumulate(all, r), aDir = accumulate(direct, r);
+  const handoffs = all.filter(L => L.sdr && L.md && inR(L.created, r)).length;
+  return { all: aAll, dir: aDir, handoffs };
+}
+function aeMetricVal(k, x) {
+  if (k === "rev") return x.all.rev;
+  if (k === "aov") return x.all.deals ? x.all.rev / x.all.deals : null;
+  if (k === "md") return x.dir.n ? x.dir.md / x.dir.n : null;
+  if (k === "l2d") return x.dir.n ? x.dir.cl / x.dir.n : null;
+  if (k === "m2c") return x.all.md ? x.all.mdc / x.all.md : null;
+}
+function renderAE(base, r) {
+  const aeLeads = base; // every lead has an AE
+  const direct = base.filter(L => !L.sdr);
+  const aAll = accumulate(aeLeads, r), pAll = r.prev ? accumulate(aeLeads, r.prev) : null;
+  const aDir = accumulate(direct, r), pDir = r.prev ? accumulate(direct, r.prev) : null;
+  $("aeTiles").innerHTML =
+    tileHTML("rev", aAll, pAll, r, { spark: sparkVals(aeLeads, "rev", r) }) +
+    tileHTML("aov", aAll, pAll, r, { spark: sparkVals(aeLeads, "aov", r) }) +
+    tileHTML("md", aDir, pDir, r, { label: "Meeting Done % (direct)", spark: sparkVals(direct, "md", r) }) +
+    tileHTML("l2d", aDir, pDir, r, { label: "Lead→Deal % (direct)", spark: sparkVals(direct, "l2d", r) });
+
+  const people = AES.filter(s => S.desk === "all" || s.desk === S.desk);
+  const rows = people.map(s => ({ s, x: aeAcc(base, s.name, r) }));
+  let html = `<table><thead><tr><th>AE</th><th>Revenue</th><th>Deals</th><th>AOV</th><th>Direct leads</th><th>Meeting Done %</th><th>Lead→Deal %</th><th>SDR handoffs</th><th>Meeting→Close %</th></tr></thead><tbody>`;
+  for (const desk of ["US", "OUS"]) {
+    const grp = rows.filter(o => o.s.desk === desk);
+    if (!grp.length) continue;
+    html += `<tr class="grouprow"><td colspan="9">${desk} desk</td></tr>`;
+    for (const { s, x } of grp) {
+      html += `<tr class="person${S.focusAE === s.name ? " focus" : ""}" data-ae="${esc(s.name)}" tabindex="0">
+        <td><span class="who">${esc(s.name)}</span>${s.chip ? `<span class="chip">${esc(s.chip)}</span>` : ""}</td>
+        <td>${money(x.all.rev)}</td><td>${fmtInt(x.all.deals)}</td><td>${money(x.all.deals ? x.all.rev / x.all.deals : null)}</td>
+        <td>${fmtInt(x.dir.n)}</td>${cellPct(x.dir.md, x.dir.n)}${cellPct(x.dir.cl, x.dir.n)}
+        <td>${fmtInt(x.handoffs)}</td>${cellPct(x.all.mdc, x.all.md)}</tr>`;
+    }
+  }
+  html += `</tbody></table><p class="note" style="margin:10px 4px 0">Direct leads = no SDR Owner. SDR handoffs = SDR-led leads with a Meeting Done. Meeting→Close % covers all of the AE's meetings, including handoffs. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
+  $("aeTable").innerHTML = html;
+
+  // Comparison bars
+  const k = S.aeMetric, m = METRICS[k];
+  const cols = SERIES();
+  const labels = rows.map(o => o.s.name.split(" ")[0]);
+  const vals = rows.map(o => aeMetricVal(k, o.x));
+  $("aeChartTitle").textContent = m.label + " by AE";
+  const deskCol = d => d === "US" ? cols[0] : cols[1];
+  $("aeLegend").innerHTML = legendHTML([...new Set(rows.map(o => o.s.desk))].map(d => ({ label: d + " desk", color: deskCol(d) })));
+  destroy("ae");
+  const o = baseOpts(v => fmtMetric(k, v, true), { indexAxis: "y" });
+  o.interaction = { mode: "nearest", intersect: true, axis: "y" };
+  const xs = o.scales.x, ys = o.scales.y;
+  o.scales = { x: Object.assign({}, ys, { beginAtZero: true }), y: Object.assign({}, xs, { ticks: Object.assign({}, xs.ticks, { autoSkip: false, color: cssVar("--ink-2"), callback: function (v) { return this.getLabelForValue(v); } }) }) };
+  o.plugins.tooltip.callbacks = { title: c => rows[c[0].dataIndex].s.name, label: c => ` ${m.label}: ${fmtMetric(k, c.raw)}` };
+  o.onClick = (e, els) => { if (els.length) { const nm = rows[els[0].index].s.name; S.focusAE = S.focusAE === nm ? null : nm; render(); } };
+  CHARTS.ae = new Chart($("aeChart"), {
+    type: "bar",
+    data: { labels, datasets: [{ label: m.label, data: vals, backgroundColor: rows.map(o => S.focusAE && S.focusAE !== o.s.name ? withAlpha(deskCol(o.s.desk), 0.3) : deskCol(o.s.desk)), borderRadius: 4, borderSkipped: "start", maxBarThickness: 22 }] },
+    options: o,
+  });
+
+  // Focus panel: trend for one AE vs their desk (or whole AE team)
+  const focus = S.focusAE && people.some(p => p.name === S.focusAE) ? S.focusAE : null;
+  const fk = k;
+  const buckets = bucketsBetween(r.start, r.end);
+  const pick = L => (fk === "md" || fk === "l2d") ? !L.sdr : true;
+  const fDesk = focus ? ROSTER_BY_NAME.get(focus).desk : null;
+  const ser = series(base.filter(pick), buckets, L => {
+    if (focus) return L.ae === focus ? "me" : (L.desk === fDesk && AES.some(a => a.name === L.ae) ? "desk" : null);
+    return AES.some(a => a.name === L.ae) ? "team" : null;
+  });
+  const val = acc => fk === "rev" ? acc.rev : fk === "aov" ? (acc.deals ? acc.rev / acc.deals : null) : fk === "m2c" ? (acc.md ? acc.mdc / acc.md : null) : METRICS[fk].val(acc);
+  let ds = [];
+  if (focus) {
+    const nDesk = AES.filter(a => a.desk === fDesk).length;
+    if (ser.has("me")) ds.push({ label: focus, data: ser.get("me").map(val), borderColor: cols[0], backgroundColor: cols[0] });
+    if (ser.has("desk")) ds.push({ label: `${fDesk} desk ${fk === "rev" ? "average per AE" : "average"}`, data: ser.get("desk").map(acc => { const v = val(acc); return fk === "rev" && v != null ? v / nDesk : v; }), borderColor: cssVar("--muted"), backgroundColor: cssVar("--muted"), borderDash: [] });
+  } else if (ser.has("team")) ds.push({ label: "All current AEs", data: ser.get("team").map(val), borderColor: cols[0], backgroundColor: cols[0] });
+  ds = ds.map(d => Object.assign(d, { borderWidth: 2, pointRadius: buckets.length > 40 ? 0 : 3, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true }));
+  $("aeFocusTitle").textContent = focus ? `${focus}: ${m.label}` : `All AEs: ${m.label}`;
+  $("aeFocusSub").textContent = focus ? `Compared with the ${fDesk} desk. Click the row again to clear.` : "Click an AE in the table or chart to see just them.";
+  $("aeFocusLegend").innerHTML = legendHTML(ds.map(d => ({ label: d.label, color: d.borderColor })));
+  destroy("aeF");
+  CHARTS.aeF = new Chart($("aeFocusChart"), { type: "line", data: { labels: buckets.map(bucketLabel), datasets: ds }, options: baseOpts(v => fmtMetric(fk, v, true)) });
+  const lostPool = base.filter(L => inR(L.created, r) && (focus ? L.ae === focus : AES.some(a => a.name === L.ae) && (S.desk === "all" || L.desk === S.desk)));
+  $("aeLost").innerHTML = hbarsHTML(topReasons(lostPool, "lost", 6), null, { neutral: true, noPct: true });
+}
+
+/* ---------- Habits ---------- */
+const HABIT_METRICS = {
+  cov: { label: "Call coverage", kind: "pct", good: 1 },
+  ttf: { label: "Median time to first call", kind: "dur", good: -1 },
+  d2: { label: "Second-day call %", kind: "pct", good: 1 },
+  nrc: { label: "“Not responsive”, never called", kind: "pct", good: -1 },
+};
+function habitAcc(leads, r) {
+  const h = { n: 0, called: 0, d2: 0, nr: 0, nrNever: 0, ttf: [] };
+  const DAY = 86400e3, off = AIRTABLE_TZ_OFFSET_H * 3600e3;
+  for (const L of leads) {
+    if (!inR(L.created, r) || L.calls == null || (FULL_START && L.created < FULL_START)) continue;
+    if (L.utc < CALL_WINDOW.start - DAY || L.utc > CALL_WINDOW.end - DAY) continue; // only leads the call file can see
+    h.n++;
+    const called = L.calls.length > 0;
+    if (L.bucket === "nonresp") { h.nr++; if (!called) h.nrNever++; }
+    if (!called) continue;
+    h.called++;
+    h.ttf.push(Math.max(0, (L.calls[0] - L.utc) / 60e3));
+    const firstDay = Math.floor((L.calls[0] + off) / DAY);
+    if (L.calls.some(t => Math.floor((t + off) / DAY) > firstDay)) h.d2++;
+  }
+  h.cov = h.n ? h.called / h.n : null;
+  h.d2p = h.called ? h.d2 / h.called : null;
+  h.nrcp = h.nr ? h.nrNever / h.nr : null;
+  h.med = median(h.ttf);
+  return h;
+}
+function habitTile(k, h, p, r) {
+  const m = HABIT_METRICS[k];
+  const v = { cov: h.cov, ttf: h.med, d2: h.d2p, nrc: h.nrcp }[k];
+  const pv = p ? { cov: p.cov, ttf: p.med, d2: p.d2p, nrc: p.nrcp }[k] : null;
+  const cap = { cov: `${fmtInt(h.called)} of ${fmtInt(h.n)} leads got a call`, ttf: `Across ${fmtInt(h.called)} called leads`, d2: `${fmtInt(h.d2)} of ${fmtInt(h.called)} called leads`, nrc: `${fmtInt(h.nrNever)} of ${fmtInt(h.nr)} non-responsive leads` }[k];
+  let delta;
+  if (!r.prev || pv == null || v == null) delta = `<span class="delta flat">No comparison</span>`;
+  else if (m.kind === "dur") {
+    const diff = v - pv; const good = diff < 0;
+    delta = Math.abs(diff) < 1 ? `<span class="delta flat">No change</span>` : `<span class="delta ${good ? "good" : "bad"}">${diff > 0 ? "▲" : "▼"} ${dur(Math.abs(diff))}<span class="vs">vs ${esc(r.prevLabel)}</span></span>`;
+  } else delta = deltaHTML(k, v, pv, r.prevLabel);
+  return `<div class="tile"><div class="tl">${esc(m.label)}<em>by lead date</em></div><div class="tv">${m.kind === "dur" ? dur(v) : pct(v)}</div><div class="tc">${cap}</div><div class="trow">${delta}</div></div>`;
+}
+function renderHabits(base, r) {
+  const banner = $("habitsBanner");
+  if (!CALLS.length) {
+    banner.hidden = false;
+    banner.innerHTML = "Load the Aircall call history export to fill this tab. Drop it anywhere on the page.";
+    $("habitTiles").innerHTML = ""; $("habitTable").innerHTML = ""; destroy("hab"); $("habitLegend").innerHTML = "";
+    return;
+  }
+  const aeCalls = [...CALL_USERS].some(u => AES.some(a => a.name === u));
+  banner.hidden = aeCalls;
+  banner.innerHTML = "This Aircall file only has SDR calls, so AE numbers read as “not called”. Export Aircall with AE lines included to fill them in.";
+  $("habitsNote").textContent = `Calls from ${fmtDate(new Date(CALL_WINDOW.start))} to ${fmtDate(new Date(CALL_WINDOW.end))}, matched to leads by phone number. Only leads created inside that window count.`;
+  const leads = viewFilter(base, S.view);
+  const h = habitAcc(leads, r), p = r.prev ? habitAcc(leads, r.prev) : null;
+  $("habitTiles").innerHTML = ["cov", "ttf", "d2", "nrc"].map(k => habitTile(k, h, p, r)).join("") +
+    `<div class="tile soon"><div class="tl">Cadence adherence<em>SDRs and AEs</em></div><div class="tv">Coming soon</div><div class="tc">Reserved until the cadence rule is defined</div></div>`;
+  $("habitTiles").className = "tiles five";
+
+  // Per person
+  const callsBy = new Map();
+  for (const c of CALLS) if (c.dir === "outbound") {
+    const d = new Date(c.t + AIRTABLE_TZ_OFFSET_H * 3600e3);
+    const local = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    if (inR(local, r)) callsBy.set(c.user, (callsBy.get(c.user) || 0) + 1);
+  }
+  const groups = [];
+  if (S.view !== "ae") groups.push({ title: "SDRs", people: SDRS, pick: (L, nm) => L.sdr === nm });
+  if (S.view !== "sdr") groups.push({ title: "AEs", people: AES, pick: (L, nm) => !L.sdr && L.ae === nm });
+  const chartRows = [];
+  let html = `<table><thead><tr><th>Person</th><th>Calls made</th><th>Leads</th><th>Call coverage</th><th>Median first call</th><th>Second-day call %</th><th>“Not responsive”, never called</th><th>Cadence</th></tr></thead><tbody>`;
+  for (const g of groups) {
+    const ppl = g.people.filter(s => S.desk === "all" || s.desk === S.desk);
+    if (!ppl.length) continue;
+    html += `<tr class="grouprow"><td colspan="8">${g.title}</td></tr>`;
+    for (const s of ppl) {
+      const x = habitAcc(base.filter(L => g.pick(L, s.name)), r);
+      chartRows.push({ name: s.name, role: g.title, med: x.med });
+      html += `<tr><td><span class="who">${esc(s.name)}</span><span class="chip">${s.desk}</span></td><td>${fmtInt(callsBy.get(s.name) || 0)}</td><td>${fmtInt(x.n)}</td>
+        ${cellPct(x.called, x.n)}<td${x.called < SMALL_SAMPLE ? ' class="small"' : ""}>${dur(x.med)}</td>${cellPct(x.d2, x.called)}${cellPct(x.nrNever, x.nr)}<td class="soon-cell">Coming soon</td></tr>`;
+    }
+  }
+  html += `</tbody></table><p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within ${CALL_LOOKAHEAD_DAYS} days of the lead coming in. Second-day call = called again on a later day than the first call.</p>`;
+  $("habitTable").innerHTML = html;
+
+  // Median time to first call chart
+  const cols = SERIES();
+  const rowsC = chartRows.filter(c => c.med != null);
+  destroy("hab");
+  $("habitLegend").innerHTML = legendHTML([...new Set(rowsC.map(c => c.role))].map(t => ({ label: t, color: t === "SDRs" ? cols[0] : cols[1] })));
+  const o = baseOpts(v => dur(v), { indexAxis: "y" });
+  o.interaction = { mode: "nearest", intersect: true, axis: "y" };
+  const xs = o.scales.x, ys = o.scales.y;
+  o.scales = { x: Object.assign({}, ys), y: Object.assign({}, xs, { ticks: Object.assign({}, xs.ticks, { autoSkip: false, color: cssVar("--ink-2"), callback: function (v) { return this.getLabelForValue(v); } }) }) };
+  o.plugins.tooltip.callbacks = { title: c => rowsC[c[0].dataIndex].name, label: c => ` Median first call: ${dur(c.raw)}` };
+  CHARTS.hab = new Chart($("habitChart"), {
+    type: "bar",
+    data: { labels: rowsC.map(c => c.name.split(" ")[0]), datasets: [{ label: "Median time to first call", data: rowsC.map(c => c.med), backgroundColor: rowsC.map(c => c.role === "SDRs" ? cols[0] : cols[1]), borderRadius: 4, borderSkipped: "start", maxBarThickness: 22 }] },
+    options: o,
+  });
+}
+
+/* ================= CONTROLS ================= */
+const BOOL_KEYS = new Set(["b2b", "refunds", "repeat"]);
+function syncControls() {
+  document.querySelectorAll(".seg[data-key]").forEach(seg => {
+    const k = seg.dataset.key;
+    seg.querySelectorAll("button").forEach(b => {
+      const on = String(S[k]) === b.dataset.v;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on);
+    });
+  });
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === S.tab));
+  $("customDates").hidden = S.date !== "custom";
+  if (S.date === "custom") { $("dateFrom").value = S.from; $("dateTo").value = S.to; }
+}
+document.addEventListener("click", e => {
+  const segBtn = e.target.closest(".seg[data-key] button");
+  if (segBtn) {
+    const k = segBtn.parentElement.dataset.key; let v = segBtn.dataset.v;
+    if (BOOL_KEYS.has(k)) v = v === "true";
+    S[k] = v;
+    if (k === "date" && v === "custom" && !S.from) { const n = new Date(); S.from = ymd(new Date(n.getFullYear(), 0, 1)); S.to = ymd(n); }
+    savePrefs(); render(); return;
+  }
+  const tab = e.target.closest("#tabs button");
+  if (tab) { S.tab = tab.dataset.tab; savePrefs(); try { history.replaceState(null, "", "#" + S.tab); } catch (_) {} render(); return; }
+  const kpi = e.target.closest("[data-kpi]");
+  if (kpi) { S.kpi = kpi.dataset.kpi; savePrefs(); render(); return; }
+  const tt = e.target.closest("[data-toggle-table]");
+  if (tt) { const k = tt.dataset.toggleTable; SHOW_TABLE[k] = !SHOW_TABLE[k]; tt.textContent = SHOW_TABLE[k] ? "Hide table" : "Show table"; render(); return; }
+  const sdrRow = e.target.closest("tr[data-sdr]");
+  if (sdrRow) { S.focusSDR = S.focusSDR === sdrRow.dataset.sdr ? null : sdrRow.dataset.sdr; render(); return; }
+  const aeRow = e.target.closest("tr[data-ae]");
+  if (aeRow) { S.focusAE = S.focusAE === aeRow.dataset.ae ? null : aeRow.dataset.ae; render(); return; }
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr.person")) e.target.click(); });
+$("dateFrom").addEventListener("change", e => { S.from = e.target.value; savePrefs(); render(); });
+$("dateTo").addEventListener("change", e => { S.to = e.target.value; savePrefs(); render(); });
+$("loadBtn").addEventListener("click", () => $("fileInput").click());
+$("loadBtn2").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", e => { handleFiles([...e.target.files]); e.target.value = ""; });
+$("clearBtn").addEventListener("click", async () => {
+  LEADS = []; CALLS = []; META = { airtable: null, aircall: null }; joinCalls(); await idbClear(); render();
+});
+// Drag and drop anywhere
+let dragDepth = 0;
+window.addEventListener("dragenter", e => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { dragDepth++; $("dropVeil").hidden = false; } });
+window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("dropVeil").hidden = true; });
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => { e.preventDefault(); dragDepth = 0; $("dropVeil").hidden = true; if (e.dataTransfer?.files?.length) handleFiles([...e.dataTransfer.files]); });
+// Re-draw charts when the theme changes
+try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => render()); } catch (e) {}
+new MutationObserver(() => render()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function showToast(msg) {
+  const t = document.createElement("div");
+  t.className = "banner"; t.textContent = msg;
+  t.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;box-shadow:0 8px 30px rgba(0,0,0,.18);max-width:90vw";
+  document.body.appendChild(t); setTimeout(() => t.remove(), 6000);
+}
+
+/* ================= BOOT ================= */
+(async function boot() {
+  const h = (location.hash || "").slice(1);
+  if (["overview", "sdr", "ae", "habits"].includes(h)) S.tab = h;
+  render();
+  const [a, c] = await Promise.all([idbGet("airtable"), idbGet("aircall")]);
+  if (a) ingest("airtable", a.text, a.name, a.at);
+  if (c) ingest("aircall", c.text, c.name, c.at);
+  if (a || c) { joinCalls(); render(); }
+})();
+</script>
+</body>
+</html>

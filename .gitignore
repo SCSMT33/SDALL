@@ -1,0 +1,4 @@
+# Never commit data exports (they contain client names, emails and phones)
+*.csv
+*.xlsx
+node_modules/
