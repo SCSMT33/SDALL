@@ -1124,6 +1124,12 @@ function renderOverview(base, r) {
   const yFmt = v => fmtMetric(k, v, true);
   const opts = baseOpts(yFmt);
   if (isRev) { opts.scales.x.stacked = true; opts.scales.y.stacked = true; }
+  if (showYoy && S.yoy) {
+    // Size each month's pair so last year and this year sit side by side with a 2px gap.
+    const plotW = Math.max(200, $("ovChart").parentElement.clientWidth - 70);
+    const slot = 26; // 24px bar + 2px gap
+    opts.datasets = { bar: { categoryPercentage: Math.min(0.9, (2 * slot) / (plotW / Math.max(1, labels.length))), barPercentage: 24 / slot } };
+  }
   if (showYoy && S.yoy) opts.plugins.tooltip.callbacks.title = items => items.length === 1 && items[0].dataset.lastYear ? lyLabels[items[0].dataIndex] : (items[0] ? items[0].label : "");
   CHARTS.ov = new Chart($("ovChart"), { type: isRev ? "bar" : "line", data: { labels, datasets }, options: opts });
   $("ovTable").hidden = !SHOW_TABLE.ov;
