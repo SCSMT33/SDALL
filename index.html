@@ -1164,7 +1164,19 @@ function renderOverview(base, r) {
   destroy("ov");
   const yFmt = v => fmtMetric(k, v, true);
   const opts = baseOpts(yFmt);
-  if (isRev) { opts.scales.x.stacked = true; opts.scales.y.stacked = true; }
+  if (isRev) {
+    opts.scales.x.stacked = true; opts.scales.y.stacked = true;
+    // Hovering a date on a stacked chart: add the full bar total (and last year's total when shown).
+    opts.plugins.tooltip.callbacks.footer = items => {
+      if (items.length < 2) return "";
+      const sum = st => items.filter(i => (i.dataset.stack || "s") === st).reduce((t, i) => t + (i.raw || 0), 0);
+      const lines = [`Total: ${money(sum("s"))}`];
+      if (items.some(i => i.dataset.stack === "ly")) lines.push(`Last year total: ${money(sum("ly"))}`);
+      return lines;
+    };
+    opts.plugins.tooltip.footerColor = cssVar("--ink");
+    opts.plugins.tooltip.footerMarginTop = 8;
+  }
   if (showYoy && S.yoy) {
     // Size each month's pair so last year and this year sit side by side with a 2px gap.
     const plotW = Math.max(200, $("ovChart").parentElement.clientWidth - 70);
