@@ -52,11 +52,13 @@ All filters are dropdowns in the top bar.
 (The separate Habits tab was removed; its content lives on the SDRs and AEs tabs.)
 
 ## Projection method (Overview)
-Average of two simple methods (tested best on this data: ±13–16% vs ±15–18% for either alone):
-1. Run-rate: last 3 full months with seasonality removed, plus a trend (slope of last 6 months, capped ±5%/month, fading 20%/month), times seasonality. Seasonality = month ÷ centred 12-month average, shrunk toward 1 with few years (1 year = half strength).
-2. Last year: same month last year × growth of the last 6 full months vs a year earlier. The growth figure uses all leads (B2B tags incomplete before Sep 2025).
-- Done per chart split group. Current month = actual so far + forecast × share of month left.
-- Accuracy = average miss predicting 1–3 months ahead from each of the last 8 month-ends; shown as ±%.
+Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in fast growth):
+- A. Run-rate: last 3 full months with seasonality removed, plus a trend (slope of last 6 months, capped ±5%/month, fading 20%/month), times seasonality.
+- B. Last year: same month last year × growth of the last 6 full months vs a year earlier. Last year's seasonal swing is taken at the same half strength as A so one-off spikes aren't copied. The growth figure uses all leads (B2B tags incomplete before Sep 2025).
+- Seasonality = month ÷ centred 12-month average, shrunk toward 1 with few years (1 year = half strength).
+- Per chart split group. Current month = actual so far + forecast × share of month left.
+- Accuracy shown by horizon: ±% for 1–3 months out and 4–6 months out (backtest from past month-ends).
+- Backtest (B2B): 1–3m ±12% (was ±14%), 4–6m ±15% (was ±21%).
 
 ## Pipeline projection (current month, Overview revenue chart)
 - Short black line on the current month's bar, from day 7 of the month (month grouping).
