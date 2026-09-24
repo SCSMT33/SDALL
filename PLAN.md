@@ -65,7 +65,7 @@ Average of two simple methods (tested best on this data: ±13–16% vs ±15–18
 
 ## Growth vs last year (Overview)
 - Summary: growth for the last 12 / 6 / 3 months (ending on the file's last day) vs the same period a year earlier, "speeding up / steady / slowing" (3-month vs 12-month, ±10 pts), plus projected growth for the next 3 or 6 months with a range.
-- Chart: last 24 full months, each month vs the same month last year + 3-month average; projected months in green (Projection: Off / 3 / 6 months).
+- Chart: last 24 full months, each month vs the same month last year + 3-month average; projected months in green (Projection dropdown: Off / 3 / 6 / 12 months). Projected growth = projected revenue (seasonality included) ÷ same months last year.
 - Uses all leads (B2B tags are incomplete before Sep 2025); every other filter applies.
 
 ## Rules

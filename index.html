@@ -463,8 +463,9 @@ td .who { font-weight: 500; }
       <div class="cardhead">
         <div><h3>Growth vs last year</h3><div class="sub" id="grSub"></div></div>
         <div class="controls">
-          <span class="flabel">Projection</span>
-          <div class="seg" data-key="growthProj"><button data-v="0">Off</button><button data-v="3">3 months</button><button data-v="6">6 months</button></div>
+          <div class="field"><label class="flabel" for="fGrowthProj">Projection</label>
+            <select class="select" id="fGrowthProj" data-key="growthProj"><option value="0">Off</option><option value="3">Next 3 months</option><option value="6">Next 6 months</option><option value="12">Next 12 months</option></select>
+          </div>
           <button class="linkbtn" data-toggle-table="gr">Show table</button>
           <button class="linkbtn" data-expand="gr">Expand</button>
         </div>
