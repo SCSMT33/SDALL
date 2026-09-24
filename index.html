@@ -971,12 +971,31 @@ function topReasons(leads, bucket, n = 7) {
 }
 
 /* Chart.js */
+// Hover rules for every chart: on a dot or bar = just that one. On the dates under the chart = everyone for that date.
+Chart.Interaction.modes.smart = function (chart, e, options, useFinal) {
+  const hit = Chart.Interaction.modes.nearest(chart, e, { intersect: true, axis: "xy" }, useFinal);
+  return hit.length ? [hit[0]] : [];
+};
+// The chart library ignores the mouse outside the plot, so handle the date labels under it here.
+Chart.register({
+  id: "dateHover",
+  afterEvent(chart, args) {
+    const e = args.event, a = chart.chartArea;
+    if (e.type !== "mousemove" || chart.options.indexAxis === "y") return;
+    if (e.y > a.bottom && e.x >= a.left && e.x <= a.right) {
+      const items = Chart.Interaction.modes.index(chart, { type: e.type, native: e.native, x: e.x, y: a.bottom - 1 }, { intersect: false, axis: "x" }, false);
+      chart.tooltip.setActiveElements(items.map(i => ({ datasetIndex: i.datasetIndex, index: i.index })), { x: e.x, y: a.bottom });
+      args.changed = true;
+    }
+  },
+});
 function destroy(id) { if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; } }
 function baseOpts(yFmt, extra = {}) {
   const ink2 = cssVar("--ink-2"), muted = cssVar("--muted"), grid = cssVar("--grid"), axis = cssVar("--axis"), surface = cssVar("--surface"), ink = cssVar("--ink");
   return Object.assign({
     responsive: true, maintainAspectRatio: false, animation: false,
-    interaction: { mode: "index", intersect: false },
+    interaction: { mode: "smart", intersect: true },
+    elements: { point: { hitRadius: 8, hoverRadius: 6 } },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -1013,7 +1032,7 @@ function peopleTrend(id, labels, rows, team, fmt, focus, focusAttr) {
   if (team) ds.push({ label: team.label, data: team.data, borderColor: ink, backgroundColor: ink, borderWidth: 3, pointRadius: 0, pointHoverRadius: 4, tension: 0.15, spanGaps: true, order: 1 });
   const anyHidden = rows.some(({ p }) => hidden.has(p.name));
   $(id + "Legend").innerHTML = rows.map(({ p }) => `<button class="lg${hidden.has(p.name) ? " off" : ""}" data-toggle-person="${role}|${esc(p.name)}" aria-pressed="${!hidden.has(p.name)}" title="${hidden.has(p.name) ? "Show" : "Hide"} ${esc(p.name)}"><i style="background:${personColor(p)}"></i>${esc(p.name)}</button>`).join("") +
-    (team ? `<button class="lg" data-toggle-all="${role}" data-names="${esc(rows.map(r => r.p.name).join("|"))}" title="${anyHidden ? "Show everyone" : "Hide everyone except the team line"}"><i class="teamkey" style="background:${ink}"></i>${esc(team.label)}<span class="lgnote">${anyHidden ? "show all" : "hide all"}</span></button>` : "");
+    (team ? `<button class="lg" data-toggle-all="${role}" data-names="${esc(rows.map(r => r.p.name).join("|"))}" title="${anyHidden ? "Show everyone" : "Hide everyone except the team line"}"><i class="teamkey" style="background:${ink}"></i>${esc(team.label)}<span class="lgnote">${anyHidden ? "show all" : "hide all"}</span></button>` : "") + `<span class="lgnote" style="margin-left:auto">Hover a dot for one person · hover a date for everyone</span>`;
   destroy(id);
   CHARTS[id] = new Chart($(id + "Chart"), { type: "line", data: { labels, datasets: ds }, options: baseOpts(fmt) });
   return ds;
