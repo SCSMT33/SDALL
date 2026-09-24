@@ -19,19 +19,20 @@ Each has a view switch: **Whole team / SDRs / AEs**
 All filters are dropdowns in the top bar.
 - **People:** checkbox list of every SDR and AE (+ former team members). Unticked people's leads and deals are removed from every number, chart and table.
 - **View:** Whole team / SDR-led / AE-direct (Overview tab)
-- **Date range:** this month / last month / last 90 days / this year / all / custom
+- **Date range:** this month / last month / last 90 days / this year / all / custom / This year + projection / Next 12 months
 - **Leads:** B2B only (default) / All leads
 - **Desk:** All / US / OUS
 - **Refunds:** leave out (default) / include
 - **Repeat clients:** include (default) / leave out
 - **Chart split:** none / SDR-led vs AE-led / US vs OUS / New vs repeat client (stacked bars on revenue)
-- **Chart grouping:** by week / by month
+- **Chart grouping:** by week / by month / by quarter
 
 ## Tabs
 **1. Overview (whole team)**
 - The 4 top numbers + view switch
 - History chart for whichever top number is selected
 - Revenue by month: "Last year" Show/Hide toggle adds a faded bar for the same month last year (same filters and split)
+- Revenue projection (green bars, stacked on actuals) whenever the date range reaches today; Revenue tile shows the projected total ± accuracy; explainer box under the chart
 - Funnel: Leads → Called → Meeting Done → Closed
 - Top Lost and Disqualified reasons
 
@@ -49,6 +50,13 @@ All filters are dropdowns in the top bar.
 - Bottom: Why leads drop out, Lost / Disqualified switch
 
 (The separate Habits tab was removed; its content lives on the SDRs and AEs tabs.)
+
+## Projection method (Overview revenue)
+1. Seasonality: each month ÷ the centred 12-month average (removes growth), averaged per calendar month, shrunk toward 1 when few years exist (1 year = half strength).
+2. Run-rate: last 3 complete months, seasonality removed. Trend: slope of last 6 such months, capped ±5%/month, fading 20% per month ahead.
+3. Forecast = run-rate × (1 + faded trend) × seasonality. Done per chart split group (seasonality shared).
+4. Current month = actual so far + forecast × share of month left after the file's last lead.
+5. Accuracy = average miss predicting each of the last 6 complete months one month ahead; shown as ±%.
 
 ## Rules
 - Every % shows its count next to it, e.g. "22% (of 41)".

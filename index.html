@@ -29,6 +29,9 @@
   --s6: #008300;
   --s7: #4a3aa7;
   --neutral-bar: #b9b8b0;
+  --proj1: #1a9850;
+  --proj2: #8fd19e;
+  --proj-wash: rgba(26, 152, 80, 0.08);
   --good: #006300;
   --bad: #d03b3b;
   --chip: #e8e7e1;
@@ -57,6 +60,9 @@
     --s6: #008300;
     --s7: #9085e9;
     --neutral-bar: #5a5a56;
+    --proj1: #2fb567;
+    --proj2: #1d6b3d;
+    --proj-wash: rgba(47, 181, 103, 0.10);
     --good: #0ca30c;
     --bad: #e66767;
     --chip: #2a2a28;
@@ -83,6 +89,9 @@
   --s6: #008300;
   --s7: #9085e9;
   --neutral-bar: #5a5a56;
+  --proj1: #2fb567;
+  --proj2: #1d6b3d;
+  --proj-wash: rgba(47, 181, 103, 0.10);
   --good: #0ca30c;
   --bad: #e66767;
   --chip: #2a2a28;
@@ -231,6 +240,13 @@ button.tile:hover { border-color: var(--axis); }
 @media (max-width: 700px) { .tiles.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .tiles.five { grid-template-columns: minmax(0, 1fr); } }
 .spark { width: 96px; height: 28px; flex: none; margin-left: auto; }
+.tile .proj { font-size: 12.5px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.tile .proj i { width: 8px; height: 8px; border-radius: 2px; background: var(--proj1); flex: none; }
+.tile .proj b { color: var(--ink); }
+.projnote { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--proj-wash); font-size: 13px; color: var(--ink-2); }
+.projnote ol { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 4px; }
+.projnote p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+.projnote b { color: var(--ink); }
 .tile.soon { border-style: dashed; background: transparent; box-shadow: none; }
 .tile.soon .tv { color: var(--muted); font-size: 18px; font-weight: 500; }
 
@@ -351,6 +367,7 @@ td .who { font-weight: 500; }
         <select class="select" id="fDate" data-key="date">
           <option value="month">This month</option><option value="lastmonth">Last month</option><option value="90">Last 90 days</option>
           <option value="year">This year</option><option value="all">All time</option><option value="custom">Custom…</option>
+          <optgroup label="With projection"><option value="yearproj">This year + projection</option><option value="next12">Next 12 months</option></optgroup>
         </select>
       </div>
       <div class="field" id="customDates" hidden>
@@ -378,7 +395,7 @@ td .who { font-weight: 500; }
       </div>
       <div class="field">
         <label class="flabel" for="fGroup">Group by</label>
-        <select class="select" id="fGroup" data-key="group"><option value="month">Month</option><option value="week">Week</option></select>
+        <select class="select" id="fGroup" data-key="group"><option value="week">Week</option><option value="month">Month</option><option value="quarter">Quarter</option></select>
       </div>
     </div>
   </div>
@@ -423,6 +440,8 @@ td .who { font-weight: 500; }
       <div class="legend" id="ovLegend"></div>
       <div class="chartbox"><canvas id="ovChart" aria-label="Metric over time"></canvas></div>
       <div class="datatable" id="ovTable" hidden></div>
+      <p class="note" id="ovProjHint" hidden style="margin-top:10px">Switch Group by to Month or Quarter to see the projection.</p>
+      <div class="projnote" id="ovProj" hidden></div>
     </div>
     <div class="grid2">
       <div class="card">
@@ -868,13 +887,17 @@ function getRange() {
       const t = S.to ? new Date(S.to + "T00:00") : new Date(y, m, d);
       r = { start: f, end: new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1) }; break;
     }
+    case "yearproj": r = { start: new Date(y, 0, 1), end: new Date(y + 1, 0, 1) }; break;
+    case "next12": r = { start: new Date(y, m, 1), end: new Date(y + 1, m, 1) }; break;
     default: r = { start: new Date(y, 0, 1), end: tomorrow };
   }
   if (S.date === "lastmonth") r.prev = { start: new Date(y, m - 2, 1), end: new Date(y, m - 1, 1) };
   else if (S.date === "year") r.prev = { start: new Date(y - 1, 0, 1), end: new Date(y - 1, m, d + 1) };
   else if (S.date === "month") r.prev = { start: new Date(y, m - 1, 1), end: new Date(y, m - 1, d + 1) };
+  else if (S.date === "yearproj") r.prev = { start: new Date(y - 1, 0, 1), end: new Date(y, 0, 1) };
+  else if (S.date === "next12") r.prev = null;
   else if (S.date !== "all") { const len = r.end - r.start; r.prev = { start: new Date(r.start - len), end: r.start }; }
-  r.prevLabel = S.date === "year" ? "last year" : S.date === "month" || S.date === "lastmonth" ? "last month" : "prev. period";
+  r.prevLabel = S.date === "year" || S.date === "yearproj" ? "last year" : S.date === "month" || S.date === "lastmonth" ? "last month" : "prev. period";
   return r;
 }
 const inR = (d, r) => d && d >= r.start && d < r.end;
@@ -933,12 +956,18 @@ function fmtMetric(k, v, compact) { return METRICS[k].kind === "money" ? money(v
 /* Time buckets */
 function bucketStart(d) {
   if (S.group === "month") return new Date(d.getFullYear(), d.getMonth(), 1);
+  if (S.group === "quarter") return new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
   return x;
 }
-function nextBucket(d) { return S.group === "month" ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7); }
-function bucketLabel(d) { return S.group === "month" ? MON_SHORT[d.getMonth()] + " " + String(d.getFullYear()).slice(2) : MON_SHORT[d.getMonth()] + " " + d.getDate(); }
+function nextBucket(d) { return S.group === "month" ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : S.group === "quarter" ? new Date(d.getFullYear(), d.getMonth() + 3, 1) : new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7); }
+function prevBucket(d) { return S.group === "month" ? new Date(d.getFullYear(), d.getMonth() - 1, 1) : S.group === "quarter" ? new Date(d.getFullYear(), d.getMonth() - 3, 1) : new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7); }
+function bucketLabel(d) {
+  if (S.group === "month") return MON_SHORT[d.getMonth()] + " " + String(d.getFullYear()).slice(2);
+  if (S.group === "quarter") return "Q" + (Math.floor(d.getMonth() / 3) + 1) + " " + String(d.getFullYear()).slice(2);
+  return MON_SHORT[d.getMonth()] + " " + d.getDate();
+}
 function bucketsBetween(start, end) {
   const out = []; let d = bucketStart(start);
   while (d < end && out.length < 600) { out.push(d); d = nextBucket(d); }
@@ -957,6 +986,96 @@ function series(leads, buckets, splitFn) {
     if (isClosed(L) && L.closed >= first && L.closed < last) { const i = idx.get(bucketStart(L.closed).getTime()); if (i != null) addDeal(get(k)[i], L); }
   }
   return out;
+}
+
+/* ================= PROJECTION =================
+   Revenue projection = recent run-rate × seasonality, with a trend that fades out.
+   1. Seasonality: each month's revenue ÷ the 12-month average centred on it (removes growth), averaged per calendar month.
+   2. Run-rate: last 3 complete months with seasonality removed. Trend: slope of the last 6 such months, capped ±5%/month.
+   3. Forecast month k = run-rate × (1 + trend × fading sum) × seasonality[k]. The trend fades by 20% each month ahead.
+   Worked out separately for each chart split group; seasonality is shared (from the total).
+   Accuracy = average miss when the same method predicted each of the last 6 complete months. */
+const mKey = d => d.getFullYear() * 12 + d.getMonth();
+const keyDate = k => new Date(Math.floor(k / 12), k % 12, 1);
+const keyLabel = k => MON_SHORT[k % 12] + " " + String(Math.floor(k / 12)).slice(2);
+const PROJ_PHI = 0.8;
+function projection(leads, splitFn) {
+  if (!LEADS.length) return null;
+  const end = LEADS[LEADS.length - 1].created, cm = mKey(end), last = cm - 1;
+  const dim = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
+  const frac = Math.max(0, (dim - end.getDate()) / dim);
+  const seg = new Map(), tot = new Map();
+  for (const L of leads) {
+    if (!isClosed(L) || !L.closed) continue;
+    const k = mKey(L.closed); if (k > cm) continue;
+    const g = splitFn(L); if (g == null) continue;
+    if (!seg.has(g)) seg.set(g, new Map());
+    const m = seg.get(g); m.set(k, (m.get(k) || 0) + L.price); tot.set(k, (tot.get(k) || 0) + L.price);
+  }
+  let recent = 0; for (let k = last - 11; k <= last; k++) recent += tot.get(k) || 0;
+  recent /= 12; if (!recent) return null;
+  let start = last;  // first month of usable history (older months with tiny totals are left out)
+  for (let k = last; k >= last - 120; k--) { if ((tot.get(k) || 0) >= 0.15 * recent) start = k; else break; }
+  if (last - start < 2) return null;
+  const ratios = Array.from({ length: 12 }, () => []);
+  for (let k = start + 6; k <= last - 6; k++) {
+    let sum = 0; for (let j = -6; j <= 6; j++) sum += (tot.get(k + j) || 0) * (Math.abs(j) === 6 ? 0.5 : 1);
+    if (sum > 0) ratios[k % 12].push((tot.get(k) || 0) / (sum / 12));
+  }
+  // Shrink toward 1 when there are few years to learn from: 1 year = half strength, 2 years = 2/3, 3 = 3/4...
+  let S12 = ratios.map(r => r.length ? 1 + (r.reduce((a, b) => a + b, 0) / r.length - 1) * (r.length / (r.length + 1)) : 1).map(v => Math.min(1.5, Math.max(0.6, v)));
+  const mean = S12.reduce((a, b) => a + b, 0) / 12; S12 = S12.map(v => v / mean);
+  const seasonMonths = ratios.filter(r => r.length).length;
+  const seasonYears = Math.max(0, ...ratios.map(r => r.length));
+  const des = (m, k) => (m.get(k) || 0) / S12[k % 12];
+  const fit = (m, upto) => {
+    const lv = [upto - 2, upto - 1, upto].filter(k => k >= start).map(k => des(m, k));
+    if (!lv.length) return null;
+    const level = lv.reduce((a, b) => a + b, 0) / lv.length;
+    const pts = []; for (let k = Math.max(start, upto - 5); k <= upto; k++) pts.push([k, des(m, k)]);
+    let g = 0;
+    if (pts.length >= 4 && level > 0) {
+      const n = pts.length, mx = pts.reduce((a, p) => a + p[0], 0) / n, my = pts.reduce((a, p) => a + p[1], 0) / n;
+      const b = pts.reduce((a, p) => a + (p[0] - mx) * (p[1] - my), 0) / pts.reduce((a, p) => a + (p[0] - mx) ** 2, 0);
+      g = Math.max(-0.05, Math.min(0.05, b / level));
+    }
+    return { level, g };
+  };
+  const fcAt = (f, upto, k) => { if (!f) return 0; const h = k - (upto - 1); let damp = 0, p = 1; for (let i = 0; i < h; i++) { p *= PROJ_PHI; damp += p; } return Math.max(0, f.level * (1 + f.g * damp) * S12[k % 12]); };
+  const fits = new Map([...seg].map(([g, m]) => [g, fit(m, last)]));
+  const totFit = fit(tot, last);
+  const errs = [];
+  for (let k = last - 5; k <= last; k++) {
+    if (k - 1 - start < 2) continue;
+    const act = tot.get(k) || 0; if (!act) continue;
+    errs.push(Math.abs(fcAt(fit(tot, k - 1), k - 1, k) - act) / act);
+  }
+  const mape = errs.length ? errs.reduce((a, b) => a + b, 0) / errs.length : null;
+  // Projected (not yet happened) revenue for month k: full forecast for future months, the unfinished share for the current month.
+  const projMonth = (g, k) => k < cm ? 0 : fcAt(fits.get(g), last, k) * (k === cm ? frac : 1);
+  return { cm, last, start, frac, end, S12, seasonMonths, seasonYears, fits, totFit, mape, projMonth, groups: [...seg.keys()] };
+}
+function projectedIn(P, g, from, to) { // months with start in [from, to)
+  let t = 0; for (let k = Math.max(P.cm, mKey(from)); keyDate(k) < to; k++) t += P.projMonth(g, k); return t;
+}
+function projectionExplainer(P, splitLabel) {
+  const pm = (v) => money(v, true);
+  const lvl = [...P.fits.values()].reduce((t, f) => t + (f ? f.level : 0), 0);
+  const g = P.totFit ? P.totFit.g : 0;
+  const parts = P.fits.size > 1 ? " (" + [...P.fits].map(([n, f]) => `${n} ${pm(f ? f.level : 0)}`).join(" · ") + ")" : "";
+  const idx = P.S12.map((v, i) => [i, v]).sort((a, b) => b[1] - a[1]);
+  const season = P.seasonMonths >= 6
+    ? `Busiest: ${MON_SHORT[idx[0][0]]} ${idx[0][1].toFixed(2)}×, ${MON_SHORT[idx[1][0]]} ${idx[1][1].toFixed(2)}×. Quietest: ${MON_SHORT[idx[11][0]]} ${idx[11][1].toFixed(2)}×, ${MON_SHORT[idx[10][0]]} ${idx[10][1].toFixed(2)}×.`
+    : "Not enough history yet to measure seasonality, so every month is treated the same.";
+  return `<b>How the projection works</b>
+    <ol>
+      <li><b>Run-rate:</b> average revenue per month for ${keyLabel(P.last - 2)}–${keyLabel(P.last)}, with seasonal ups and downs taken out: <b>${pm(lvl)}/month</b>${esc(parts)}.${P.fits.size > 1 ? ` Each ${esc(splitLabel)} group is projected on its own, so a group that is growing faster keeps growing faster.` : ""}</li>
+      <li><b>Trend:</b> over the last 6 months revenue moved about <b>${g >= 0 ? "+" : ""}${(g * 100).toFixed(1)}% a month</b>. The projection keeps that trend but fades it out month by month, so it doesn't run away.</li>
+      <li><b>Seasonality:</b> each month is scaled by how it compares with a normal month, measured on ${keyLabel(P.start)}–${keyLabel(P.last)} history with growth removed${P.seasonYears === 1 ? ", at half strength because there's only one year of history so far" : ""}. ${season}</li>
+      <li><b>This month (${MON_SHORT[P.cm % 12]}):</b> actual so far, plus the projection for the ${Math.round(P.frac * 100)}% of the month left after the last lead in your file (${fmtDate(P.end)}).</li>
+      <li><b>Accuracy:</b> ${P.mape != null ? `when this method predicted each of the last 6 finished months, it was off by <b>±${Math.round(P.mape * 100)}%</b> on average. Read projections as a range.` : "not enough history to test yet."}</li>
+    </ol>
+    <p>Every filter at the top applies. The projection only uses deals that match them.</p>`;
 }
 
 /* ================= RENDER: shared pieces ================= */
@@ -983,7 +1102,7 @@ function sparkSVG(vals) {
 }
 function sparkVals(leads, k, r) {
   const end = r.end, lastB = bucketStart(new Date(end - 1));
-  let s = lastB; for (let i = 0; i < 11; i++) s = S.group === "month" ? new Date(s.getFullYear(), s.getMonth() - 1, 1) : new Date(s.getFullYear(), s.getMonth(), s.getDate() - 7);
+  let s = lastB; for (let i = 0; i < 11; i++) s = prevBucket(s);
   const b = bucketsBetween(s, end);
   const ser = series(leads, b, () => "x").get("x");
   return ser ? ser.map(a => METRICS[k].val(a)) : [];
@@ -996,7 +1115,7 @@ function tileHTML(k, a, prev, r, opts = {}) {
   return `<${el} class="tile${opts.sel ? " sel" : ""}"${opts.selectable ? ` data-kpi="${k}" aria-pressed="${!!opts.sel}"` : ""}>
     <div class="tl">${esc(opts.label || m.label)}<em>${tag}</em></div>
     <div class="tv"${small ? ' style="color:var(--muted)" title="Small sample"' : ""}>${fmtMetric(k, v)}</div>
-    <div class="tc">${m.cap(a)}${small ? " · small sample" : ""}</div>
+    <div class="tc">${m.cap(a)}${small ? " · small sample" : ""}</div>${opts.extra || ""}
     <div class="trow">${r.prev ? deltaHTML(k, v, prev ? m.val(prev) : null, r.prevLabel) : `<span class="delta flat">All time</span>`}${opts.spark ? sparkSVG(opts.spark) : ""}</div>
   </${el}>`;
 }
@@ -1152,7 +1271,17 @@ function renderOverview(base, r) {
   const viewName = { all: "Whole team", sdr: "SDR-led leads", ae: "AE-direct leads" }[S.view];
   $("ovRangeNote").textContent = `${viewName} · ${rangeText(r)} · ${S.b2b ? "B2B only" : "All leads"}${S.desk !== "all" ? " · " + S.desk + " desk" : ""}`;
   const a = accumulate(leads, r), p = r.prev ? accumulate(leads, r.prev) : null;
-  $("ovTiles").innerHTML = ["rev", "aov", "l2d", "md"].map(k => tileHTML(k, a, p, r, { selectable: true, sel: S.kpi === k, spark: sparkVals(leads, k, r) })).join("");
+  // Projection is shown when the date range reaches today or later.
+  const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+  const PT = r.end > today0 ? projection(leads, () => "All") : null;
+  let revExtra = "";
+  if (PT) {
+    const projTo = S.date === "month" || S.date === "year" || S.date === "90" || S.date === "all" ? keyDate(mKey(new Date(r.end - 1)) + 1) : r.end;
+    const pr = projectedIn(PT, "All", r.start, projTo);
+    const lbl = { month: "this month", yearproj: `for ${r.start.getFullYear()}`, next12: "next 12 months" }[S.date] || `through ${fmtDate(new Date(projTo - 86400e3))}`;
+    if (pr > 0) revExtra = `<div class="proj" title="Actual so far + projected. See the chart for how it's calculated."><i></i>Projected ${lbl}: <b>${money(a.rev + pr, true)}</b>${PT.mape != null ? ` ±${Math.round(PT.mape * 100)}%` : ""}</div>`;
+  }
+  $("ovTiles").innerHTML = ["rev", "aov", "l2d", "md"].map(k => tileHTML(k, a, p, r, { selectable: true, sel: S.kpi === k, spark: sparkVals(leads, k, r), extra: k === "rev" ? revExtra : "" })).join("");
 
   // Main chart
   const k = METRICS[S.kpi] ? S.kpi : "rev";
@@ -1171,10 +1300,26 @@ function renderOverview(base, r) {
       ? { label: o === "All" ? m.label : o, data, backgroundColor: col, borderColor: cssVar("--surface"), borderWidth: S.split === "none" ? 0 : { top: 2 }, borderRadius: 4, borderSkipped: "start", maxBarThickness: 24, stack: "s" }
       : { label: o === "All" ? m.label : o, data, borderColor: col, backgroundColor: withAlpha(col, 0.10), fill: S.split === "none", borderWidth: 2, pointRadius: buckets.length > 40 ? 0 : 3, pointHoverRadius: 5, pointBackgroundColor: col, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true };
   });
-  // Last-year bars: revenue by month only. Same filters, same split, 12 months earlier, drawn faded to the left.
-  const showYoy = isRev && S.group === "month";
+  // Projected revenue (green), stacked on top of actuals, for the current and future months.
+  let P = null;
+  if (isRev && S.group !== "week" && r.end > today0) {
+    P = projection(leads, splitFns[S.split]);
+    if (P) {
+      const greens = [cssVar("--proj1"), cssVar("--proj2")];
+      order.filter(o => P.groups.includes(o)).forEach((o, i) => {
+        const data = buckets.map(b => projectedIn(P, o, b, nextBucket(b)));
+        if (data.some(v => v > 0)) datasets.push({ label: (o === "All" ? m.label : o) + " · projected", data, backgroundColor: greens[i % 2], borderColor: cssVar("--surface"), borderWidth: { top: 2 }, borderRadius: 4, borderSkipped: "start", maxBarThickness: 24, stack: "s", projected: true });
+      });
+    }
+  }
+  $("ovProj").hidden = !(P && datasets.some(d => d.projected));
+  if (!$("ovProj").hidden) $("ovProj").innerHTML = projectionExplainer(P, { none: "", role: "SDR-led / AE-direct", desk: "desk", repeat: "new / repeat" }[S.split]);
+  $("ovProjHint").hidden = !(isRev && S.group === "week" && r.end > today0);
+
+  // Last-year bars: revenue by month or quarter. Same filters, same split, 12 months earlier, drawn faded to the left.
+  const showYoy = isRev && S.group !== "week";
   $("yoyGroup").hidden = !showYoy;
-  const lyLabels = buckets.map(b => MON_SHORT[b.getMonth()] + " " + String(b.getFullYear() - 1).slice(2));
+  const lyLabels = buckets.map(b => bucketLabel(new Date(b.getFullYear() - 1, b.getMonth(), 1)));
   if (showYoy && S.yoy) {
     const lyBuckets = buckets.map(b => new Date(b.getFullYear() - 1, b.getMonth(), 1));
     const lySer = series(leads, lyBuckets, splitFns[S.split]);
@@ -1198,7 +1343,8 @@ function renderOverview(base, r) {
     opts.plugins.tooltip.callbacks.footer = items => {
       if (items.length < 2) return "";
       const sum = st => items.filter(i => (i.dataset.stack || "s") === st).reduce((t, i) => t + (i.raw || 0), 0);
-      const lines = [`Total: ${money(sum("s"))}`];
+      const proj = items.filter(i => i.dataset.projected).reduce((t, i) => t + (i.raw || 0), 0);
+      const lines = proj ? [`Actual: ${money(sum("s") - proj)}`, `Projected: ${money(proj)}`, `Total: ${money(sum("s"))}`] : [`Total: ${money(sum("s"))}`];
       if (items.some(i => i.dataset.stack === "ly")) lines.push(`Last year total: ${money(sum("ly"))}`);
       return lines;
     };
