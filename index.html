@@ -25,6 +25,9 @@
   --s2: #eb6834;
   --s3: #1baf7a;
   --s4: #eda100;
+  --s5: #e87ba4;
+  --s6: #008300;
+  --s7: #4a3aa7;
   --neutral-bar: #b9b8b0;
   --good: #006300;
   --bad: #d03b3b;
@@ -50,6 +53,9 @@
     --s2: #d95926;
     --s3: #199e70;
     --s4: #c98500;
+    --s5: #d55181;
+    --s6: #008300;
+    --s7: #9085e9;
     --neutral-bar: #5a5a56;
     --good: #0ca30c;
     --bad: #e66767;
@@ -73,6 +79,9 @@
   --s2: #d95926;
   --s3: #199e70;
   --s4: #c98500;
+  --s5: #d55181;
+  --s6: #008300;
+  --s7: #9085e9;
   --neutral-bar: #5a5a56;
   --good: #0ca30c;
   --bad: #e66767;
@@ -261,6 +270,11 @@ td .who { font-weight: 500; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend button.lg { border: 0; background: transparent; padding: 2px 6px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.legend button.lg:hover { background: var(--surface-2); }
+.legend button.lg.on { background: var(--accent-wash); color: var(--ink); font-weight: 600; }
+.legend .teamkey { width: 16px; height: 3px; border-radius: 2px; }
+.legend { margin-bottom: 6px; }
 .datatable { margin-top: 12px; max-height: 320px; overflow: auto; }
 .datatable table td, .datatable table th { padding: 5px 8px; font-size: 12.5px; }
 .fxnote { margin-top: 24px; font-size: 12.5px; color: var(--muted); }
@@ -401,7 +415,7 @@ td .who { font-weight: 500; }
     </div>
     <div class="card">
       <div class="cardhead">
-        <div><h3 id="sdrChartTitle"></h3><div class="sub">One line per SDR, by lead creation date</div></div>
+        <div><h3 id="sdrChartTitle"></h3><div class="sub">One line per SDR, by lead creation date. Click a name to highlight one SDR.</div></div>
         <div class="controls">
           <div class="seg" data-key="sdrMetric">
             <button data-v="md">Meeting Done %</button><button data-v="l2d">Lead→Deal %</button><button data-v="nr">Non-Response %</button>
@@ -423,28 +437,27 @@ td .who { font-weight: 500; }
     <div class="tiles" id="aeTiles"></div>
     <div class="card">
       <div class="cardhead">
-        <div><h3>Per AE</h3><div class="sub">Compare within a desk. Click a row to see that AE's trend and lost reasons.</div></div>
+        <div><h3 id="aeChartTitle"></h3><div class="sub" id="aeChartSub"></div></div>
+        <div class="controls">
+          <div class="seg" data-key="aeMetric">
+            <button data-v="rev">Revenue</button><button data-v="aov">AOV</button><button data-v="md">Meeting Done %</button><button data-v="l2d">Lead→Deal %</button><button data-v="m2c">Meeting→Close %</button>
+          </div>
+          <button class="linkbtn" data-toggle-table="ae">Show table</button>
+        </div>
+      </div>
+      <div class="legend" id="aeLegend"></div>
+      <div class="chartbox"><canvas id="aeChart" aria-label="AE metric over time"></canvas></div>
+      <div class="datatable" id="aeDataTable" hidden></div>
+    </div>
+    <div class="card">
+      <div class="cardhead">
+        <div><h3>Per AE</h3><div class="sub">Compare within a desk. Click a row to highlight that AE in the chart.</div></div>
       </div>
       <div class="tablewrap" id="aeTable"></div>
     </div>
-    <div class="grid2">
-      <div class="card">
-        <div class="cardhead">
-          <div><h3 id="aeChartTitle"></h3><div class="sub">Date range total, grouped by desk</div></div>
-        </div>
-        <div class="seg" data-key="aeMetric" style="margin-bottom:10px">
-          <button data-v="rev">Revenue</button><button data-v="aov">AOV</button><button data-v="md">Meeting Done %</button><button data-v="l2d">Lead→Deal %</button><button data-v="m2c">Meeting→Close %</button>
-        </div>
-        <div class="legend" id="aeLegend"></div>
-        <div class="chartbox short"><canvas id="aeChart" aria-label="AE comparison"></canvas></div>
-      </div>
-      <div class="card">
-        <div class="cardhead"><div><h3 id="aeFocusTitle"></h3><div class="sub" id="aeFocusSub"></div></div></div>
-        <div class="legend" id="aeFocusLegend"></div>
-        <div class="chartbox short"><canvas id="aeFocusChart" aria-label="AE trend"></canvas></div>
-        <h4 class="flabel" style="margin:16px 0 10px">Lost reasons</h4>
-        <div class="hbars" id="aeLost"></div>
-      </div>
+    <div class="card">
+      <div class="cardhead"><div><h3 id="aeLostTitle">Lost reasons</h3><div class="sub">Leads created in the date range</div></div></div>
+      <div class="hbars" id="aeLost"></div>
     </div>
   </section>
 
@@ -457,17 +470,36 @@ td .who { font-weight: 500; }
       </div>
     </div>
     <div class="banner" id="habitsBanner" hidden></div>
-    <div class="tiles" id="habitTiles"></div>
-    <div class="card">
-      <div class="cardhead"><div><h3>Per person</h3><div class="sub">SDRs are measured on SDR-led leads, AEs on their AE-direct leads</div></div></div>
-      <div class="tablewrap" id="habitTable"></div>
+    <div class="tiles five" id="habitTiles"></div>
+    <div class="card" id="habSdrCard">
+      <div class="cardhead">
+        <div><h3 id="habSdrTitle"></h3><div class="sub">SDR-led leads. Click a name to highlight one SDR.</div></div>
+        <div class="controls">
+          <div class="seg" data-key="habSdrMetric">
+            <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend" id="habSdrLegend"></div>
+      <div class="chartbox short"><canvas id="habSdrChart" aria-label="SDR habit over time"></canvas></div>
+      <div class="tablewrap" id="habSdrTable" style="margin-top:14px"></div>
     </div>
-    <div class="card">
-      <div class="cardhead"><div><h3>Median time to first call</h3><div class="sub">Lower is better. Leads that got at least one call.</div></div></div>
-      <div class="legend" id="habitLegend"></div>
-      <div class="chartbox short"><canvas id="habitChart" aria-label="Median time to first call per person"></canvas></div>
+    <div class="card" id="habAeCard">
+      <div class="cardhead">
+        <div><h3 id="habAeTitle"></h3><div class="sub">AE-direct leads. Click a name to highlight one AE.</div></div>
+        <div class="controls">
+          <div class="seg" data-key="habAeMetric">
+            <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend" id="habAeLegend"></div>
+      <div class="chartbox short"><canvas id="habAeChart" aria-label="AE habit over time"></canvas></div>
+      <div class="tablewrap" id="habAeTable" style="margin-top:14px"></div>
     </div>
+    <p class="note" id="habFoot"></p>
   </section>
+
   <details class="fxnote" id="fxNote" hidden>
     <summary>All money is in USD. Deals in other currencies are converted at fixed rates.</summary>
     <div id="fxBody"></div>
@@ -515,10 +547,10 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 const DEFAULTS = {
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", focusSDR: null, focusAE: null,
+  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", focusSDR: null, focusAE: null,
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
-const SHOW_TABLE = { ov: false, sdr: false };
+const SHOW_TABLE = { ov: false, sdr: false, ae: false };
 let LEADS = [], CALLS = [], META = { airtable: null, aircall: null };
 let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
 // Older history in the export only has closed deals. Percentages only count from the month every lead is present.
@@ -953,7 +985,24 @@ function dataTableHTML(labels, datasets, fmt) {
   return `<table><thead><tr><th>Period</th>${datasets.map(d => `<th>${esc(d.label)}</th>`).join("")}</tr></thead><tbody>${labels.map((l, i) => `<tr><td>${esc(l)}</td>${datasets.map(d => `<td>${d.data[i] == null ? "—" : fmt(d.data[i])}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
 function withAlpha(hex, a) { const h = hex.replace("#", ""); const n = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
-const SERIES = () => [cssVar("--s1"), cssVar("--s2"), cssVar("--s3"), cssVar("--s4")];
+const SERIES = () => ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7"].map(cssVar);
+
+function personColor(p) { const list = p.role === "AE" ? AES : SDRS; const c = SERIES(); return c[list.indexOf(p) % c.length]; }
+// One line per person + a bold team line. Clicking a name in the legend highlights that person.
+function peopleTrend(id, labels, rows, team, fmt, focus, focusAttr) {
+  const surface = cssVar("--surface"), ink = cssVar("--ink");
+  const many = labels.length > 40;
+  const ds = rows.map(({ p, data }) => {
+    const col = personColor(p), faded = focus && focus !== p.name, c = faded ? withAlpha(col, 0.18) : col;
+    return { label: p.name, data, borderColor: c, backgroundColor: c, borderWidth: faded ? 1.5 : (focus ? 3 : 2), pointRadius: many ? 0 : 3, pointHoverRadius: 5, pointBorderColor: surface, pointBorderWidth: 2, tension: 0.25, spanGaps: true, order: faded ? 3 : 2 };
+  });
+  if (team) ds.push({ label: team.label, data: team.data, borderColor: ink, backgroundColor: ink, borderWidth: 3, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: true, order: 1 });
+  $(id + "Legend").innerHTML = rows.map(({ p }) => `<button class="lg${focus === p.name ? " on" : ""}" ${focusAttr}="${esc(p.name)}"><i style="background:${personColor(p)}"></i>${esc(p.name)}</button>`).join("") +
+    (team ? `<span><i class="teamkey" style="background:${ink}"></i>${esc(team.label)}</span>` : "");
+  destroy(id);
+  CHARTS[id] = new Chart($(id + "Chart"), { type: "line", data: { labels, datasets: ds }, options: baseOpts(fmt) });
+  return ds;
+}
 
 /* ================= TABS ================= */
 function render() {
@@ -1072,21 +1121,15 @@ function renderSDR(base, r) {
   // Trend chart
   const k = S.sdrMetric, m = METRICS[k];
   const buckets = bucketsBetween(r.start, r.end);
-  const ser = series(leads, buckets, L => SDRS.some(s => s.name === L.sdr) ? L.sdr : null);
-  const cols = SERIES();
+  const names = new Set(people.map(s => s.name));
+  const ser = series(leads, buckets, L => names.has(L.sdr) ? L.sdr : null);
+  const teamSer = series(leads, buckets, L => names.has(L.sdr) ? "t" : null).get("t");
   const labels = buckets.map(bucketLabel);
-  const datasets = people.filter(s => ser.has(s.name)).map(s => {
-    const col = cols[SDRS.indexOf(s)];
-    const faded = S.focusSDR && S.focusSDR !== s.name;
-    const c = faded ? withAlpha(col, 0.22) : col;
-    return { label: s.name, data: ser.get(s.name).map(acc => acc.n >= 3 ? m.val(acc) : null), borderColor: c, backgroundColor: c, borderWidth: faded ? 1.5 : 2, pointRadius: buckets.length > 40 ? 0 : 3, pointHoverRadius: 5, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true, order: faded ? 2 : 1 };
-  });
+  const rowsC = people.filter(s => ser.has(s.name)).map(s => ({ p: s, data: ser.get(s.name).map(acc => acc.n >= 3 ? m.val(acc) : null) }));
   $("sdrChartTitle").textContent = `${m.label} by ${S.group}`;
-  $("sdrLegend").innerHTML = legendHTML(datasets.map(d => ({ label: d.label, color: cols[SDRS.findIndex(s => s.name === d.label)] })));
-  destroy("sdr");
-  CHARTS.sdr = new Chart($("sdrChart"), { type: "line", data: { labels, datasets }, options: baseOpts(v => pct(v, 0)) });
+  const ds = peopleTrend("sdr", labels, rowsC, teamSer ? { label: "SDR team", data: teamSer.map(acc => m.val(acc)) } : null, v => pct(v, 0), S.focusSDR, "data-focus-sdr");
   $("sdrDataTable").hidden = !SHOW_TABLE.sdr;
-  if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, datasets, v => pct(v));
+  if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, ds, v => pct(v));
 }
 
 /* ---------- AEs ---------- */
@@ -1104,18 +1147,48 @@ function aeMetricVal(k, x) {
   if (k === "l2d") return x.dir.n ? x.dir.cl / x.dir.n : null;
   if (k === "m2c") return x.all.md ? x.all.mdc / x.all.md : null;
 }
+function aeBucketVal(k, all, dir) {
+  if (k === "rev") return all.rev;
+  if (k === "aov") return all.deals ? all.rev / all.deals : null;
+  if (k === "md") return dir.n >= 5 ? dir.md / dir.n : null;
+  if (k === "l2d") return dir.n >= 5 ? dir.cl / dir.n : null;
+  if (k === "m2c") return all.md >= 3 ? all.mdc / all.md : null;
+}
 function renderAE(base, r) {
-  const aeLeads = base; // every lead has an AE
   const direct = base.filter(L => !L.sdr);
-  const aAll = accumulate(aeLeads, r), pAll = r.prev ? accumulate(aeLeads, r.prev) : null;
+  const aAll = accumulate(base, r), pAll = r.prev ? accumulate(base, r.prev) : null;
   const aDir = accumulate(direct, r), pDir = r.prev ? accumulate(direct, r.prev) : null;
   $("aeTiles").innerHTML =
-    tileHTML("rev", aAll, pAll, r, { spark: sparkVals(aeLeads, "rev", r) }) +
-    tileHTML("aov", aAll, pAll, r, { spark: sparkVals(aeLeads, "aov", r) }) +
+    tileHTML("rev", aAll, pAll, r, { spark: sparkVals(base, "rev", r) }) +
+    tileHTML("aov", aAll, pAll, r, { spark: sparkVals(base, "aov", r) }) +
     tileHTML("md", aDir, pDir, r, { label: "Meeting Done % (direct)", spark: sparkVals(direct, "md", r) }) +
     tileHTML("l2d", aDir, pDir, r, { label: "Lead→Deal % (direct)", spark: sparkVals(direct, "l2d", r) });
 
   const people = AES.filter(s => S.desk === "all" || s.desk === S.desk);
+  const names = new Set(people.map(p => p.name));
+
+  // Month-over-month chart: one line per AE + all AEs
+  const k = S.aeMetric, m = METRICS[k];
+  const buckets = bucketsBetween(r.start, r.end), labels = buckets.map(bucketLabel);
+  const byAE = L => names.has(L.ae) ? L.ae : null, team = L => names.has(L.ae) ? "t" : null;
+  const serAll = series(base, buckets, byAE), serDir = series(direct, buckets, byAE);
+  const tAll = series(base, buckets, team).get("t"), tDir = series(direct, buckets, team).get("t");
+  const blank = buckets.map(emptyAcc);
+  const rowsC = people.filter(p => serAll.has(p.name)).map(p => ({ p, data: buckets.map((_, i) => aeBucketVal(k, serAll.get(p.name)[i], (serDir.get(p.name) || blank)[i])) }));
+  const teamData = tAll ? buckets.map((_, i) => { const v = aeBucketVal(k, tAll[i], (tDir || blank)[i]); return k === "rev" && v != null ? v / (people.length || 1) : v; }) : null;
+  $("aeChartTitle").textContent = `${m.label} by ${S.group}, per AE`;
+  $("aeChartSub").textContent = {
+    rev: "Deals closed, by close date. The black line is the average per AE.",
+    aov: "Deals closed, by close date. The black line is all AEs together.",
+    md: "AE-direct leads, by lead date. The black line is all AEs together.",
+    l2d: "AE-direct leads, by lead date. The black line is all AEs together.",
+    m2c: "All of the AE's meetings, including SDR handoffs, by lead date. The black line is all AEs together.",
+  }[k];
+  const ds = peopleTrend("ae", labels, rowsC, teamData ? { label: k === "rev" ? "Average per AE" : "All AEs", data: teamData } : null, v => fmtMetric(k, v, true), S.focusAE, "data-focus-ae");
+  $("aeDataTable").hidden = !SHOW_TABLE.ae;
+  if (SHOW_TABLE.ae) $("aeDataTable").innerHTML = dataTableHTML(labels, ds, v => fmtMetric(k, v));
+
+  // Table
   const rows = people.map(s => ({ s, x: aeAcc(base, s.name, r) }));
   let html = `<table><thead><tr><th>AE</th><th>Revenue</th><th>Deals</th><th>AOV</th><th>Direct leads</th><th>Meeting Done %</th><th>Lead→Deal %</th><th>SDR handoffs</th><th>Meeting→Close %</th></tr></thead><tbody>`;
   for (const desk of ["US", "OUS"]) {
@@ -1124,7 +1197,7 @@ function renderAE(base, r) {
     html += `<tr class="grouprow"><td colspan="9">${desk} desk</td></tr>`;
     for (const { s, x } of grp) {
       html += `<tr class="person${S.focusAE === s.name ? " focus" : ""}" data-ae="${esc(s.name)}" tabindex="0">
-        <td><span class="who">${esc(s.name)}</span>${s.chip ? `<span class="chip">${esc(s.chip)}</span>` : ""}</td>
+        <td><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;background:${personColor(s)}"></i><span class="who">${esc(s.name)}</span>${s.chip ? `<span class="chip">${esc(s.chip)}</span>` : ""}</td>
         <td>${money(x.all.rev)}</td><td>${fmtInt(x.all.deals)}</td><td>${money(x.all.deals ? x.all.rev / x.all.deals : null)}</td>
         <td>${fmtInt(x.dir.n)}</td>${cellPct(x.dir.md, x.dir.n)}${cellPct(x.dir.cl, x.dir.n)}
         <td>${fmtInt(x.handoffs)}</td>${cellPct(x.all.mdc, x.all.md)}</tr>`;
@@ -1133,52 +1206,10 @@ function renderAE(base, r) {
   html += `</tbody></table><p class="note" style="margin:10px 4px 0">Direct leads = no SDR Owner. SDR handoffs = SDR-led leads with a Meeting Done. Meeting→Close % covers all of the AE's meetings, including handoffs. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
   $("aeTable").innerHTML = html;
 
-  // Comparison bars
-  const k = S.aeMetric, m = METRICS[k];
-  const cols = SERIES();
-  const labels = rows.map(o => o.s.name.split(" ")[0]);
-  const vals = rows.map(o => aeMetricVal(k, o.x));
-  $("aeChartTitle").textContent = m.label + " by AE";
-  const deskCol = d => d === "US" ? cols[0] : cols[1];
-  $("aeLegend").innerHTML = legendHTML([...new Set(rows.map(o => o.s.desk))].map(d => ({ label: d + " desk", color: deskCol(d) })));
-  destroy("ae");
-  const o = baseOpts(v => fmtMetric(k, v, true), { indexAxis: "y" });
-  o.interaction = { mode: "nearest", intersect: true, axis: "y" };
-  const xs = o.scales.x, ys = o.scales.y;
-  o.scales = { x: Object.assign({}, ys, { beginAtZero: true }), y: Object.assign({}, xs, { ticks: Object.assign({}, xs.ticks, { autoSkip: false, color: cssVar("--ink-2"), callback: function (v) { return this.getLabelForValue(v); } }) }) };
-  o.plugins.tooltip.callbacks = { title: c => rows[c[0].dataIndex].s.name, label: c => ` ${m.label}: ${fmtMetric(k, c.raw)}` };
-  o.onClick = (e, els) => { if (els.length) { const nm = rows[els[0].index].s.name; S.focusAE = S.focusAE === nm ? null : nm; render(); } };
-  CHARTS.ae = new Chart($("aeChart"), {
-    type: "bar",
-    data: { labels, datasets: [{ label: m.label, data: vals, backgroundColor: rows.map(o => S.focusAE && S.focusAE !== o.s.name ? withAlpha(deskCol(o.s.desk), 0.3) : deskCol(o.s.desk)), borderRadius: 4, borderSkipped: "start", maxBarThickness: 22 }] },
-    options: o,
-  });
-
-  // Focus panel: trend for one AE vs their desk (or whole AE team)
-  const focus = S.focusAE && people.some(p => p.name === S.focusAE) ? S.focusAE : null;
-  const fk = k;
-  const buckets = bucketsBetween(r.start, r.end);
-  const pick = L => (fk === "md" || fk === "l2d") ? !L.sdr : true;
-  const fDesk = focus ? ROSTER_BY_NAME.get(focus).desk : null;
-  const ser = series(base.filter(pick), buckets, L => {
-    if (focus) return L.ae === focus ? "me" : (L.desk === fDesk && AES.some(a => a.name === L.ae) ? "desk" : null);
-    return AES.some(a => a.name === L.ae) ? "team" : null;
-  });
-  const val = acc => fk === "rev" ? acc.rev : fk === "aov" ? (acc.deals ? acc.rev / acc.deals : null) : fk === "m2c" ? (acc.md ? acc.mdc / acc.md : null) : METRICS[fk].val(acc);
-  let ds = [];
-  if (focus) {
-    const nDesk = AES.filter(a => a.desk === fDesk).length;
-    if (ser.has("me")) ds.push({ label: focus, data: ser.get("me").map(val), borderColor: cols[0], backgroundColor: cols[0] });
-    if (ser.has("desk")) ds.push({ label: `${fDesk} desk ${fk === "rev" ? "average per AE" : "average"}`, data: ser.get("desk").map(acc => { const v = val(acc); return fk === "rev" && v != null ? v / nDesk : v; }), borderColor: cssVar("--muted"), backgroundColor: cssVar("--muted"), borderDash: [] });
-  } else if (ser.has("team")) ds.push({ label: "All current AEs", data: ser.get("team").map(val), borderColor: cols[0], backgroundColor: cols[0] });
-  ds = ds.map(d => Object.assign(d, { borderWidth: 2, pointRadius: buckets.length > 40 ? 0 : 3, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true }));
-  $("aeFocusTitle").textContent = focus ? `${focus}: ${m.label}` : `All AEs: ${m.label}`;
-  $("aeFocusSub").textContent = focus ? `Compared with the ${fDesk} desk. Click the row again to clear.` : "Click an AE in the table or chart to see just them.";
-  $("aeFocusLegend").innerHTML = legendHTML(ds.map(d => ({ label: d.label, color: d.borderColor })));
-  destroy("aeF");
-  CHARTS.aeF = new Chart($("aeFocusChart"), { type: "line", data: { labels: buckets.map(bucketLabel), datasets: ds }, options: baseOpts(v => fmtMetric(fk, v, true)) });
-  const lostPool = base.filter(L => inR(L.created, r) && (focus ? L.ae === focus : AES.some(a => a.name === L.ae) && (S.desk === "all" || L.desk === S.desk)));
-  $("aeLost").innerHTML = hbarsHTML(topReasons(lostPool, "lost", 6), null, { neutral: true, noPct: true });
+  const focus = S.focusAE && names.has(S.focusAE) ? S.focusAE : null;
+  $("aeLostTitle").textContent = focus ? `Lost reasons: ${focus}` : "Lost reasons: all AEs";
+  const lostPool = base.filter(L => inR(L.created, r) && (focus ? L.ae === focus : names.has(L.ae)));
+  $("aeLost").innerHTML = hbarsHTML(topReasons(lostPool, "lost", 7), null, { neutral: true, noPct: true });
 }
 
 /* ---------- Habits ---------- */
@@ -1222,12 +1253,19 @@ function habitTile(k, h, p, r) {
   } else delta = deltaHTML(k, v, pv, r.prevLabel);
   return `<div class="tile"><div class="tl">${esc(m.label)}<em>by lead date</em></div><div class="tv">${m.kind === "dur" ? dur(v) : pct(v)}</div><div class="tc">${cap}</div><div class="trow">${delta}</div></div>`;
 }
+const HAB_KEYS = {
+  cov: { label: "Call coverage", fmt: v => pct(v, 0), val: h => h.n >= 5 ? h.cov : null },
+  ttf: { label: "Median time to first call", fmt: v => dur(v), val: h => h.called >= 3 ? h.med : null },
+  d2:  { label: "Second-day call %", fmt: v => pct(v, 0), val: h => h.called >= 5 ? h.d2p : null },
+  nrc: { label: "“Not responsive”, never called", fmt: v => pct(v, 0), val: h => h.nr >= 3 ? h.nrcp : null },
+};
+function localDay(utcMs) { const d = new Date(utcMs + AIRTABLE_TZ_OFFSET_H * 3600e3); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
 function renderHabits(base, r) {
   const banner = $("habitsBanner");
   if (!CALLS.length) {
     banner.hidden = false;
     banner.innerHTML = "Load the Aircall call history export to fill this tab. Drop it anywhere on the page.";
-    $("habitTiles").innerHTML = ""; $("habitTable").innerHTML = ""; destroy("hab"); $("habitLegend").innerHTML = "";
+    $("habitTiles").innerHTML = ""; $("habSdrCard").hidden = true; $("habAeCard").hidden = true; $("habFoot").textContent = "";
     return;
   }
   const aeCalls = [...CALL_USERS].some(u => AES.some(a => a.name === u));
@@ -1238,49 +1276,37 @@ function renderHabits(base, r) {
   const h = habitAcc(leads, r), p = r.prev ? habitAcc(leads, r.prev) : null;
   $("habitTiles").innerHTML = ["cov", "ttf", "d2", "nrc"].map(k => habitTile(k, h, p, r)).join("") +
     `<div class="tile soon"><div class="tl">Cadence adherence<em>SDRs and AEs</em></div><div class="tv">Coming soon</div><div class="tc">Reserved until the cadence rule is defined</div></div>`;
-  $("habitTiles").className = "tiles five";
 
-  // Per person
+  // Buckets limited to the dates the call file covers
+  const cwStart = localDay(CALL_WINDOW.start), cwEnd = new Date(localDay(CALL_WINDOW.end).getTime() + 86400e3);
+  const hStart = r.start > cwStart ? r.start : cwStart, hEnd = r.end < cwEnd ? r.end : cwEnd;
+  const buckets = hStart < hEnd ? bucketsBetween(hStart, hEnd) : [];
+  const ranges = buckets.map(b => ({ start: b, end: nextBucket(b) }));
   const callsBy = new Map();
-  for (const c of CALLS) if (c.dir === "outbound") {
-    const d = new Date(c.t + AIRTABLE_TZ_OFFSET_H * 3600e3);
-    const local = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-    if (inR(local, r)) callsBy.set(c.user, (callsBy.get(c.user) || 0) + 1);
-  }
-  const groups = [];
-  if (S.view !== "ae") groups.push({ title: "SDRs", people: SDRS, pick: (L, nm) => L.sdr === nm });
-  if (S.view !== "sdr") groups.push({ title: "AEs", people: AES, pick: (L, nm) => !L.sdr && L.ae === nm });
-  const chartRows = [];
-  let html = `<table><thead><tr><th>Person</th><th>Calls made</th><th>Leads</th><th>Call coverage</th><th>Median first call</th><th>Second-day call %</th><th>“Not responsive”, never called</th><th>Cadence</th></tr></thead><tbody>`;
-  for (const g of groups) {
-    const ppl = g.people.filter(s => S.desk === "all" || s.desk === S.desk);
-    if (!ppl.length) continue;
-    html += `<tr class="grouprow"><td colspan="8">${g.title}</td></tr>`;
-    for (const s of ppl) {
-      const x = habitAcc(base.filter(L => g.pick(L, s.name)), r);
-      chartRows.push({ name: s.name, role: g.title, med: x.med });
-      html += `<tr><td><span class="who">${esc(s.name)}</span><span class="chip">${s.desk}</span></td><td>${fmtInt(callsBy.get(s.name) || 0)}</td><td>${fmtInt(x.n)}</td>
+  for (const c of CALLS) if (c.dir === "outbound" && inR(localDay(c.t), r)) callsBy.set(c.user, (callsBy.get(c.user) || 0) + 1);
+
+  const section = (role) => {
+    const isSdr = role === "SDR", pre = isSdr ? "habSdr" : "habAe";
+    $(pre + "Card").hidden = isSdr ? S.view === "ae" : S.view === "sdr";
+    if ($(pre + "Card").hidden) return;
+    const people = (isSdr ? SDRS : AES).filter(s => S.desk === "all" || s.desk === S.desk);
+    const pick = (L, nm) => isSdr ? L.sdr === nm : (!L.sdr && L.ae === nm);
+    const hk = S[isSdr ? "habSdrMetric" : "habAeMetric"], H = HAB_KEYS[hk];
+    $(pre + "Title").textContent = `${isSdr ? "SDR" : "AE"} habits: ${H.label} by ${S.group}`;
+    const rowsAll = people.map(pp => { const pl = base.filter(L => pick(L, pp.name)); return { p: pp, pl, data: ranges.map(b => H.val(habitAcc(pl, b))) }; });
+    const teamLeads = base.filter(L => people.some(pp => pick(L, pp.name)));
+    const team = { label: isSdr ? "SDR team" : "All AEs", data: ranges.map(b => H.val(habitAcc(teamLeads, b))) };
+    peopleTrend(pre, buckets.map(bucketLabel), rowsAll.filter(x => x.data.some(v => v != null)), team, H.fmt, isSdr ? S.focusSDR : S.focusAE, isSdr ? "data-focus-sdr" : "data-focus-ae");
+    let html = `<table><thead><tr><th>${isSdr ? "SDR" : "AE"}</th><th>Calls made</th><th>Leads</th><th>Call coverage</th><th>Median first call</th><th>Second-day call %</th><th>“Not responsive”, never called</th><th>Cadence</th></tr></thead><tbody>`;
+    for (const { p: pp, pl } of rowsAll) {
+      const x = habitAcc(pl, r);
+      html += `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;background:${personColor(pp)}"></i><span class="who">${esc(pp.name)}</span><span class="chip">${pp.desk}</span></td><td>${fmtInt(callsBy.get(pp.name) || 0)}</td><td>${fmtInt(x.n)}</td>
         ${cellPct(x.called, x.n)}<td${x.called < SMALL_SAMPLE ? ' class="small"' : ""}>${dur(x.med)}</td>${cellPct(x.d2, x.called)}${cellPct(x.nrNever, x.nr)}<td class="soon-cell">Coming soon</td></tr>`;
     }
-  }
-  html += `</tbody></table><p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within ${CALL_LOOKAHEAD_DAYS} days of the lead coming in. Second-day call = called again on a later day than the first call.</p>`;
-  $("habitTable").innerHTML = html;
-
-  // Median time to first call chart
-  const cols = SERIES();
-  const rowsC = chartRows.filter(c => c.med != null);
-  destroy("hab");
-  $("habitLegend").innerHTML = legendHTML([...new Set(rowsC.map(c => c.role))].map(t => ({ label: t, color: t === "SDRs" ? cols[0] : cols[1] })));
-  const o = baseOpts(v => dur(v), { indexAxis: "y" });
-  o.interaction = { mode: "nearest", intersect: true, axis: "y" };
-  const xs = o.scales.x, ys = o.scales.y;
-  o.scales = { x: Object.assign({}, ys), y: Object.assign({}, xs, { ticks: Object.assign({}, xs.ticks, { autoSkip: false, color: cssVar("--ink-2"), callback: function (v) { return this.getLabelForValue(v); } }) }) };
-  o.plugins.tooltip.callbacks = { title: c => rowsC[c[0].dataIndex].name, label: c => ` Median first call: ${dur(c.raw)}` };
-  CHARTS.hab = new Chart($("habitChart"), {
-    type: "bar",
-    data: { labels: rowsC.map(c => c.name.split(" ")[0]), datasets: [{ label: "Median time to first call", data: rowsC.map(c => c.med), backgroundColor: rowsC.map(c => c.role === "SDRs" ? cols[0] : cols[1]), borderRadius: 4, borderSkipped: "start", maxBarThickness: 22 }] },
-    options: o,
-  });
+    $(pre + "Table").innerHTML = html + `</tbody></table>`;
+  };
+  section("SDR"); section("AE");
+  $("habFoot").textContent = `A call counts for a lead if it goes to the lead's phone number within ${CALL_LOOKAHEAD_DAYS} days of the lead coming in. Second-day call = called again on a later day than the first call. Months with very few leads are left blank on the charts.`;
 }
 
 /* ================= CONTROLS ================= */
@@ -1313,6 +1339,10 @@ document.addEventListener("click", e => {
   if (kpi) { S.kpi = kpi.dataset.kpi; savePrefs(); render(); return; }
   const tt = e.target.closest("[data-toggle-table]");
   if (tt) { const k = tt.dataset.toggleTable; SHOW_TABLE[k] = !SHOW_TABLE[k]; tt.textContent = SHOW_TABLE[k] ? "Hide table" : "Show table"; render(); return; }
+  const fs = e.target.closest("[data-focus-sdr]");
+  if (fs) { S.focusSDR = S.focusSDR === fs.dataset.focusSdr ? null : fs.dataset.focusSdr; render(); return; }
+  const fa = e.target.closest("[data-focus-ae]");
+  if (fa) { S.focusAE = S.focusAE === fa.dataset.focusAe ? null : fa.dataset.focusAe; render(); return; }
   const sdrRow = e.target.closest("tr[data-sdr]");
   if (sdrRow) { S.focusSDR = S.focusSDR === sdrRow.dataset.sdr ? null : sdrRow.dataset.sdr; render(); return; }
   const aeRow = e.target.closest("tr[data-ae]");

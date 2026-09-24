@@ -37,9 +37,10 @@ Each has a view switch: **Whole team / SDRs / AEs**
 
 **3. AEs** (grouped by desk, Andrew flagged)
 - Revenue, AOV, Meeting Done % (direct leads), Lead→Deal % (direct leads)
+- Monthly chart above the table: one line per AE + "All AEs", metric picker (Revenue, AOV, Meeting Done %, Lead→Deal %, Meeting→Close %)
 - Breakdown: Meeting→Close % (incl. SDR handoffs), lost reasons
 
-**4. Habits** (per person, SDRs and AEs — needs Aircall file)
+**4. Habits** (split into an SDR section and an AE section, each with its own monthly chart + table — needs Aircall file)
 - Call coverage % (leads called at least once)
 - Median time to first call (speed to lead)
 - Second-day call % (called again on a later day)
