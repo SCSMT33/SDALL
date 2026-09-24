@@ -1112,6 +1112,57 @@ function projection(leads, splitFn, growthLeads) {
   const totFit = fitA(tot, last), totGrowth = growthAt(G.tot, last);
   return { cm, last, start, frac, end, S12, seasonMonths, seasonYears, fits, totFit, totGrowth, growths, mape, projMonth, groups: [...seg.keys()], actualTot: tot };
 }
+/* Pipeline projection for the current month (black marker on the revenue chart, shown from day 7):
+   actual so far
+   + leads already in that haven't closed: each × how often leads that age closed in the days left (from leads 60–240 days old) × its quote value
+   + leads still to come: recent leads per day × revenue a new lead brings within the days left. */
+const PIPE_HIST = [60, 240]; // history window: leads this many days old (min, max)
+function pipelineProjection(leads, asOf) {
+  const E = asOf || dataEndDate(); if (E.getDate() < 7) return null;
+  const DAY = 86400e3, eDay = new Date(E.getFullYear(), E.getMonth(), E.getDate() + 1);
+  const mStart = new Date(E.getFullYear(), E.getMonth(), 1), mEnd = new Date(E.getFullYear(), E.getMonth() + 1, 1);
+  const daysLeft = Math.round((mEnd - eDay) / DAY);
+  const age = (a, b) => Math.max(0, Math.floor((b - a) / DAY));
+  const ok = L => !(FULL_START && L.created < FULL_START);
+  const closedBy = (L, t) => isClosed(L) && L.closed && L.closed < t;
+  const hist = leads.filter(L => ok(L) && L.created >= new Date(eDay - PIPE_HIST[1] * DAY) && L.created < new Date(eDay - PIPE_HIST[0] * DAY));
+  if (hist.length < 200) return null;
+  const closeAge = hist.map(L => closedBy(L, eDay) ? age(L.created, L.closed) : Infinity);
+  const dealVals = hist.filter((L, i) => closeAge[i] !== Infinity).map(L => L.price);
+  const avgDeal = dealVals.length ? dealVals.reduce((a, b) => a + b, 0) / dealVals.length : 0;
+  const cache = new Map();
+  const p = (a1, a2) => {
+    const k = a1 + "|" + a2; if (cache.has(k)) return cache.get(k);
+    let n = 0, d = 0; for (const c of closeAge) if (c > a1) { d++; if (c <= a2) n++; }
+    const v = d ? n / d : 0; cache.set(k, v); return v;
+  };
+  const revWithin = t => { let v = 0; hist.forEach((L, i) => { if (closeAge[i] <= t) v += L.price; }); return v / hist.length; };
+  let actual = 0, open = 0, openDeals = 0;
+  for (const L of leads) {
+    if (closedBy(L, eDay)) { if (L.closed >= mStart) actual += L.price; continue; }
+    if (!ok(L) || L.created >= eDay || L.created < new Date(eDay - 120 * DAY)) continue;
+    const a1 = age(L.created, eDay), pr = p(a1, a1 + daysLeft);
+    open += pr * (L.price || avgDeal); openDeals += pr;
+  }
+  const recent = leads.filter(L => ok(L) && L.created >= new Date(eDay - 28 * DAY) && L.created < eDay).length;
+  const perDay = recent / 28;
+  let fresh = 0; for (let d = 0; d < daysLeft; d++) fresh += perDay * revWithin(daysLeft - d - 1);
+  return { key: mKey(E), actual, open, openDeals, fresh, perDay, daysLeft, total: actual + open + fresh, asOf: E };
+}
+// Draws the pipeline marker: a short black line slightly wider than this month's bar.
+Chart.register({
+  id: "pipelineMarker",
+  afterDatasetsDraw(chart) {
+    const ds = chart.data.datasets.find(d => d.pipeline); if (!ds) return;
+    const i = ds.data.findIndex(v => v != null); if (i < 0) return;
+    let el = null;
+    chart.data.datasets.forEach((d, di) => { if (d.type !== "line" && (d.stack || "s") === "s" && chart.isDatasetVisible(di)) { const e = chart.getDatasetMeta(di).data[i]; if (e) el = e; } });
+    const x = el ? el.x : chart.scales.x.getPixelForValue(i), w = el ? el.width : 24, y = chart.scales.y.getPixelForValue(ds.data[i]);
+    const ctx = chart.ctx; ctx.save();
+    ctx.strokeStyle = ds.markColor; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x - w / 2 - 7, y); ctx.lineTo(x + w / 2 + 7, y); ctx.stroke(); ctx.restore();
+  },
+});
 function projectedIn(P, g, from, to) { // months with start in [from, to)
   let t = 0; for (let k = Math.max(P.cm, mKey(from)); keyDate(k) < to; k++) t += P.projMonth(g, k); return t;
 }
@@ -1369,8 +1420,16 @@ function renderOverview(base, r) {
       });
     }
   }
+  let PP = null;
+  if (isRev && S.group === "month" && r.end > today0) {
+    PP = pipelineProjection(leads);
+    const i = PP ? buckets.findIndex(b => mKey(b) === PP.key) : -1;
+    if (i >= 0) datasets.push({ type: "line", label: "Pipeline projection", data: buckets.map((_, j) => j === i ? PP.total : null), pipeline: true, pp: PP, markColor: cssVar("--ink"), showLine: false, pointRadius: 0, pointHoverRadius: 0, pointHitRadius: 18, stack: "pipe", borderColor: cssVar("--ink"), backgroundColor: cssVar("--ink") });
+    else PP = null;
+  }
   $("ovProj").hidden = !(P && datasets.some(d => d.projected));
-  if (!$("ovProj").hidden) $("ovProj").innerHTML = projectionExplainer(P, { none: "", role: "SDR-led / AE-direct", desk: "desk", repeat: "new / repeat" }[S.split]);
+  if (!$("ovProj").hidden) $("ovProj").innerHTML = projectionExplainer(P, { none: "", role: "SDR-led / AE-direct", desk: "desk", repeat: "new / repeat" }[S.split]) +
+    (PP ? `<p><b>Black line on ${MON_SHORT[PP.key % 12]} = pipeline projection, ${money(PP.total, true)}:</b> actual so far ${money(PP.actual, true)} + leads already in that are likely to close ${money(PP.open, true)} (about ${Math.round(PP.openDeals)} deals, based on how often leads of the same age closed in the ${PP.daysLeft} days left) + leads still to come ${money(PP.fresh, true)} (${PP.perDay.toFixed(0)} new leads a day × what a new lead usually brings in before month end).</p>` : "");
   $("ovProjHint").hidden = !(isRev && S.group === "week" && r.end > today0);
   renderGrowth(growthLeads);
 
@@ -1391,7 +1450,8 @@ function renderOverview(base, r) {
   const fullNote = FULL_START && r.start < FULL_START ? ` Every-lead data starts ${MON_SHORT[FULL_START.getMonth()]} ${FULL_START.getFullYear()}; before that the export only has closed deals.` : "";
   const repNote = S.split === "repeat" ? ` Repeat client is set by ${REPEAT_SOURCE}.` : "";
   $("ovChartSub").textContent = (m.basis === "close" ? "Counted by the date the deal closed." : "Counted by the date the lead came in. Recent periods keep rising as leads close.") + (m.basis === "close" ? "" : fullNote) + repNote;
-  $("ovLegend").innerHTML = legendHTML(datasets.map(d => ({ label: d.label, color: isRev ? d.backgroundColor : d.borderColor })));
+  $("ovLegend").innerHTML = legendHTML(datasets.filter(d => !d.pipeline).map(d => ({ label: d.label, color: isRev ? d.backgroundColor : d.borderColor }))) +
+    (PP ? `<span><i class="teamkey" style="background:${cssVar("--ink")};width:18px"></i>Pipeline projection (${MON_SHORT[PP.key % 12]})</span>` : "");
   destroy("ov");
   const yFmt = v => fmtMetric(k, v, true);
   const opts = baseOpts(yFmt);
@@ -1414,6 +1474,12 @@ function renderOverview(base, r) {
     const plotW = Math.max(200, $("ovChart").parentElement.clientWidth - 70);
     const slot = 26; // 24px bar + 2px gap
     opts.datasets = { bar: { categoryPercentage: Math.min(0.9, (2 * slot) / (plotW / Math.max(1, labels.length))), barPercentage: 24 / slot } };
+  }
+  if (PP) {
+    const baseLabel = opts.plugins.tooltip.callbacks.label;
+    opts.plugins.tooltip.callbacks.label = c => c.dataset.pipeline
+      ? [` Pipeline projection: ${money(c.dataset.pp.total, true)}`, `   Actual so far: ${money(c.dataset.pp.actual, true)}`, `   Open leads likely to close: ${money(c.dataset.pp.open, true)}`, `   Leads still to come: ${money(c.dataset.pp.fresh, true)}`]
+      : baseLabel(c);
   }
   if (showYoy && S.yoy) opts.plugins.tooltip.callbacks.title = items => items.length === 1 && items[0].dataset.lastYear ? lyLabels[items[0].dataIndex] : (items[0] ? items[0].label : "");
   CHARTS.ov = new Chart($("ovChart"), { type: isRev ? "bar" : "line", data: { labels, datasets }, options: opts });

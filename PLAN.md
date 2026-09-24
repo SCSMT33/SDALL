@@ -58,6 +58,11 @@ Average of two simple methods (tested best on this data: ±13–16% vs ±15–18
 - Done per chart split group. Current month = actual so far + forecast × share of month left.
 - Accuracy = average miss predicting 1–3 months ahead from each of the last 8 month-ends; shown as ±%.
 
+## Pipeline projection (current month, Overview revenue chart)
+- Short black line on the current month's bar, from day 7 of the month (month grouping).
+- = actual so far + open leads × how often leads of that age closed in the days left (history: leads 60–240 days old) × quote value + new leads per day (last 28 days) × revenue a new lead brings before month end.
+- Backtest (Apr–Aug 2026): ±18% at day 7, ±16% at day 11, ±9% at day 20 (simple pace: ±24%, ±19%, ±9%).
+
 ## Growth vs last year (Overview)
 - Summary: growth for the last 12 / 6 / 3 months (ending on the file's last day) vs the same period a year earlier, "speeding up / steady / slowing" (3-month vs 12-month, ±10 pts), plus projected growth for the next 3 or 6 months with a range.
 - Chart: last 24 full months, each month vs the same month last year + 3-month average; projected months in green (Projection: Off / 3 / 6 months).
