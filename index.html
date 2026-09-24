@@ -359,7 +359,7 @@ td .who { font-weight: 500; }
         <div class="controls">
           <span class="flabel">Split</span>
           <div class="seg" data-key="split">
-            <button data-v="none">None</button><button data-v="role">SDR-led vs AE-direct</button><button data-v="desk">US vs OUS</button>
+            <button data-v="none">None</button><button data-v="role">SDR-led vs AE-direct</button><button data-v="desk">US vs OUS</button><button data-v="repeat">New vs repeat</button>
           </div>
           <button class="linkbtn" data-toggle-table="ov">Show table</button>
         </div>
@@ -509,6 +509,7 @@ let LEADS = [], CALLS = [], META = { airtable: null, aircall: null };
 let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
 // Older history in the export only has closed deals. Percentages only count from the month every lead is present.
 let FULL_START = null;
+let REPEAT_SOURCE = "";
 const CHARTS = {};
 const ROSTER_BY_NAME = new Map(ROSTER.map(p => [p.name, p]));
 const SDRS = ROSTER.filter(p => p.role === "SDR");
@@ -606,8 +607,20 @@ function ingest(kind, text, name, at) {
   else { CALLS = buildCalls(rows); META.aircall = { name, at, n: CALLS.length }; }
 }
 
+// Finds a "new customer" style column if the export has one. Returns { col, isRepeat(value) } or null.
+function findCustomerTag(keys) {
+  for (const k of keys) {
+    const n = k.toLowerCase().replace(/[^a-z]/g, "");
+    if (/newcustomer|newclient|isnew|firsttimecustomer/.test(n)) return { col: k, isRepeat: v => !/^(checked|yes|true|1|new)/i.test(String(v).trim()) };
+    if (/returning|repeat|existingcustomer|existingclient/.test(n)) return { col: k, isRepeat: v => /^(checked|yes|true|1|returning|repeat|existing)/i.test(String(v).trim()) };
+    if (/customertype|clienttype|customerstatus|clientstatus/.test(n)) return { col: k, isRepeat: v => /return|repeat|exist|recurr/i.test(String(v)) };
+  }
+  return null;
+}
 function buildLeads(rows) {
   const out = [];
+  const tag = rows.length ? findCustomerTag(Object.keys(rows[0])) : null;
+  REPEAT_SOURCE = tag ? `the “${tag.col}” column` : "email match (same email had an earlier closed deal)";
   for (const r of rows) {
     const created = parseISOish(r["Creation Date"]);
     if (!created) continue;
@@ -642,13 +655,13 @@ function buildLeads(rows) {
       dqReason, lostReason,
       email: String(r["Email"] || "").trim().toLowerCase(),
       ph: phone9(r["Phone"]),
-      repeat: false, calls: null,
+      repeat: tag ? tag.isRepeat(r[tag.col]) : false, calls: null,
     });
   }
-  // Repeat client = same email already had an earlier closed lead.
+  // No tag column: repeat client = same email already had an earlier closed lead.
   out.sort((a, b) => a.created - b.created);
   const firstClose = new Map();
-  for (const L of out) {
+  if (!tag) for (const L of out) {
     if (!L.email) continue;
     const fc = firstClose.get(L.email);
     if (fc != null && fc < L.created) L.repeat = true;
@@ -767,7 +780,7 @@ function viewFilter(leads, view) {
   if (view === "ae") return leads.filter(L => !L.sdr);
   return leads;
 }
-function emptyAcc() { return { n: 0, md: 0, cl: 0, nr: 0, aer: 0, mdc: 0, deals: 0, rev: 0 }; }
+function emptyAcc() { return { n: 0, md: 0, cl: 0, nr: 0, aer: 0, mdc: 0, deals: 0, rev: 0, repRev: 0 }; }
 function addCohort(a, L) {
   if (FULL_START && L.created < FULL_START) return;
   a.n++; if (L.md) a.md++;
@@ -777,7 +790,7 @@ function addCohort(a, L) {
   if (L.bucket === "nonresp") a.nr++;
   if (L.aeRejected) a.aer++;
 }
-function addDeal(a, L) { a.deals++; a.rev += L.price; }
+function addDeal(a, L) { a.deals++; a.rev += L.price; if (L.repeat) a.repRev += L.price; }
 function accumulate(leads, r) {
   const a = emptyAcc();
   for (const L of leads) {
@@ -787,7 +800,7 @@ function accumulate(leads, r) {
   return a;
 }
 const METRICS = {
-  rev: { label: "Revenue", kind: "money", good: 1, val: a => a.deals ? a.rev : 0, cap: a => `${fmtInt(a.deals)} deals closed`, basis: "close" },
+  rev: { label: "Revenue", kind: "money", good: 1, val: a => a.deals ? a.rev : 0, cap: a => `${fmtInt(a.deals)} deals · ${a.rev ? pct(a.repRev / a.rev, 0) : "—"} from repeat clients`, basis: "close" },
   aov: { label: "Average order value", kind: "money", good: 1, val: a => a.deals ? a.rev / a.deals : null, cap: a => `Revenue ÷ ${fmtInt(a.deals)} deals`, basis: "close" },
   l2d: { label: "Lead→Deal %", kind: "pct", good: 1, val: a => a.n ? a.cl / a.n : null, cap: a => `${fmtInt(a.cl)} of ${fmtInt(a.n)} leads closed`, basis: "created" },
   md:  { label: "Meeting Done %", kind: "pct", good: 1, val: a => a.n ? a.md / a.n : null, cap: a => `${fmtInt(a.md)} of ${fmtInt(a.n)} leads had a meeting`, basis: "created" },
@@ -969,8 +982,8 @@ function renderOverview(base, r) {
   const k = METRICS[S.kpi] ? S.kpi : "rev";
   const m = METRICS[k];
   const buckets = bucketsBetween(r.start, r.end);
-  const splitFns = { none: () => "All", role: L => L.sdr ? "SDR-led" : "AE-direct", desk: L => L.desk };
-  const order = { none: ["All"], role: ["SDR-led", "AE-direct"], desk: ["US", "OUS"] }[S.split];
+  const splitFns = { none: () => "All", role: L => L.sdr ? "SDR-led" : "AE-direct", desk: L => L.desk, repeat: L => L.repeat ? "Repeat client" : "New client" };
+  const order = { none: ["All"], role: ["SDR-led", "AE-direct"], desk: ["US", "OUS"], repeat: ["New client", "Repeat client"] }[S.split] || ["All"];
   const ser = series(leads, buckets, splitFns[S.split]);
   const cols = SERIES();
   const labels = buckets.map(bucketLabel);
@@ -984,7 +997,8 @@ function renderOverview(base, r) {
   });
   $("ovChartTitle").textContent = `${m.label} by ${S.group}`;
   const fullNote = FULL_START && r.start < FULL_START ? ` Every-lead data starts ${MON_SHORT[FULL_START.getMonth()]} ${FULL_START.getFullYear()}; before that the export only has closed deals.` : "";
-  $("ovChartSub").textContent = (m.basis === "close" ? "Counted by the date the deal closed." : "Counted by the date the lead came in. Recent periods keep rising as leads close.") + (m.basis === "close" ? "" : fullNote);
+  const repNote = S.split === "repeat" ? ` Repeat client is set by ${REPEAT_SOURCE}.` : "";
+  $("ovChartSub").textContent = (m.basis === "close" ? "Counted by the date the deal closed." : "Counted by the date the lead came in. Recent periods keep rising as leads close.") + (m.basis === "close" ? "" : fullNote) + repNote;
   $("ovLegend").innerHTML = legendHTML(datasets.map(d => ({ label: d.label, color: isRev ? d.backgroundColor : d.borderColor })));
   destroy("ov");
   const yFmt = v => fmtMetric(k, v, true);

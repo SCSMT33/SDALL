@@ -21,7 +21,7 @@ Each has a view switch: **Whole team / SDRs / AEs**
 - **Desk:** All / US / OUS
 - **Refunds:** leave out (default) / include
 - **Repeat clients:** include (default) / leave out
-- **Chart split:** none / SDR-led vs AE-led / US vs OUS
+- **Chart split:** none / SDR-led vs AE-led / US vs OUS / New vs repeat client (stacked bars on revenue)
 - **Chart grouping:** by week / by month
 
 ## Tabs
@@ -56,6 +56,11 @@ Each has a view switch: **Whole team / SDRs / AEs**
 - Airtable times are UTC+3; Aircall is UTC. Subtract 3h before joining.
 - Calls join to leads on the last 9 digits of the phone number.
 - SDR vs AE calls are told apart by the Aircall `user` name.
+
+## Repeat clients
+- Uses a "new customer" style column if the Airtable export has one (auto-detected).
+- Otherwise: repeat = the same email already had an earlier closed deal.
+- Revenue tile shows the share of revenue from repeat clients.
 
 ## Status buckets (`Sales status`)
 | Bucket | Raw values |
