@@ -28,6 +28,7 @@ Each has a view switch: **Whole team / SDRs / AEs**
 **1. Overview (whole team)**
 - The 4 top numbers + view switch
 - History chart for whichever top number is selected
+- Revenue by month: "Last year" Show/Hide toggle adds a faded bar for the same month last year (same filters and split)
 - Funnel: Leads → Called → Meeting Done → Closed
 - Top Lost and Disqualified reasons
 

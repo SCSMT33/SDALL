@@ -382,6 +382,7 @@ td .who { font-weight: 500; }
           <div class="seg" data-key="split">
             <button data-v="none">None</button><button data-v="role">SDR-led vs AE-direct</button><button data-v="desk">US vs OUS</button><button data-v="repeat">New vs repeat</button>
           </div>
+          <span class="fgroup" id="yoyGroup"><span class="flabel">Last year</span><div class="seg" data-key="yoy"><button data-v="false">Hide</button><button data-v="true">Show</button></div></span>
           <button class="linkbtn" data-toggle-table="ov">Show table</button>
           <button class="linkbtn" data-expand="ov">Expand</button>
         </div>
@@ -556,7 +557,7 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 const DEFAULTS = {
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
+  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", yoy: false, focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
 if (!S.hidden || typeof S.hidden !== "object") S.hidden = { SDR: [], AE: [] };
@@ -1101,7 +1102,20 @@ function renderOverview(base, r) {
       ? { label: o === "All" ? m.label : o, data, backgroundColor: col, borderColor: cssVar("--surface"), borderWidth: S.split === "none" ? 0 : { top: 2 }, borderRadius: 4, borderSkipped: "start", maxBarThickness: 24, stack: "s" }
       : { label: o === "All" ? m.label : o, data, borderColor: col, backgroundColor: withAlpha(col, 0.10), fill: S.split === "none", borderWidth: 2, pointRadius: buckets.length > 40 ? 0 : 3, pointHoverRadius: 5, pointBackgroundColor: col, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true };
   });
-  $("ovChartTitle").textContent = `${m.label} by ${S.group}`;
+  // Last-year bars: revenue by month only. Same filters, same split, 12 months earlier, drawn faded to the left.
+  const showYoy = isRev && S.group === "month";
+  $("yoyGroup").hidden = !showYoy;
+  const lyLabels = buckets.map(b => MON_SHORT[b.getMonth()] + " " + String(b.getFullYear() - 1).slice(2));
+  if (showYoy && S.yoy) {
+    const lyBuckets = buckets.map(b => new Date(b.getFullYear() - 1, b.getMonth(), 1));
+    const lySer = series(leads, lyBuckets, splitFns[S.split]);
+    const ly = order.filter(o => lySer.has(o)).map((o, i) => {
+      const col = S.split === "none" ? cols[0] : cols[order.indexOf(o)];
+      return { label: (o === "All" ? m.label : o) + " · last year", data: lySer.get(o).map(acc => m.val(acc)), backgroundColor: withAlpha(col, 0.32), borderColor: cssVar("--surface"), borderWidth: S.split === "none" ? 0 : { top: 2 }, borderRadius: 4, borderSkipped: "start", maxBarThickness: 24, stack: "ly", lastYear: true };
+    });
+    datasets.unshift(...ly);
+  }
+  $("ovChartTitle").textContent = `${m.label} by ${S.group}` + (showYoy && S.yoy ? " vs last year" : "");
   const fullNote = FULL_START && r.start < FULL_START ? ` Every-lead data starts ${MON_SHORT[FULL_START.getMonth()]} ${FULL_START.getFullYear()}; before that the export only has closed deals.` : "";
   const repNote = S.split === "repeat" ? ` Repeat client is set by ${REPEAT_SOURCE}.` : "";
   $("ovChartSub").textContent = (m.basis === "close" ? "Counted by the date the deal closed." : "Counted by the date the lead came in. Recent periods keep rising as leads close.") + (m.basis === "close" ? "" : fullNote) + repNote;
@@ -1110,6 +1124,7 @@ function renderOverview(base, r) {
   const yFmt = v => fmtMetric(k, v, true);
   const opts = baseOpts(yFmt);
   if (isRev) { opts.scales.x.stacked = true; opts.scales.y.stacked = true; }
+  if (showYoy && S.yoy) opts.plugins.tooltip.callbacks.title = items => items.length === 1 && items[0].dataset.lastYear ? lyLabels[items[0].dataIndex] : (items[0] ? items[0].label : "");
   CHARTS.ov = new Chart($("ovChart"), { type: isRev ? "bar" : "line", data: { labels, datasets }, options: opts });
   $("ovTable").hidden = !SHOW_TABLE.ov;
   if (SHOW_TABLE.ov) $("ovTable").innerHTML = dataTableHTML(labels, datasets, v => fmtMetric(k, v));
@@ -1344,7 +1359,7 @@ function renderHabits(base, r) {
 }
 
 /* ================= CONTROLS ================= */
-const BOOL_KEYS = new Set(["b2b", "refunds", "repeat"]);
+const BOOL_KEYS = new Set(["b2b", "refunds", "repeat", "yoy"]);
 function syncControls() {
   document.querySelectorAll(".seg[data-key]").forEach(seg => {
     const k = seg.dataset.key;
