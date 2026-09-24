@@ -209,6 +209,7 @@ button.tile:hover { border-color: var(--axis); }
 /* Chart */
 .chartbox { position: relative; height: 320px; }
 .chartbox.short { height: 260px; }
+.chartbox.tall { height: min(680px, 80vh); }
 .linkbtn { border: 0; background: transparent; color: var(--accent); font-size: 12.5px; padding: 0; font-weight: 500; }
 .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
@@ -273,6 +274,9 @@ td .who { font-weight: 500; }
 .legend button.lg { border: 0; background: transparent; padding: 2px 6px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
 .legend button.lg:hover { background: var(--surface-2); }
 .legend button.lg.on { background: var(--accent-wash); color: var(--ink); font-weight: 600; }
+.legend button.lg.off { color: var(--muted); text-decoration: line-through; }
+.legend button.lg.off i { opacity: 0.25; }
+.legend .lgnote { font-size: 11px; color: var(--muted); margin-left: 2px; }
 .legend .teamkey { width: 16px; height: 3px; border-radius: 2px; }
 .legend { margin-bottom: 6px; }
 .datatable { margin-top: 12px; max-height: 320px; overflow: auto; }
@@ -379,6 +383,7 @@ td .who { font-weight: 500; }
             <button data-v="none">None</button><button data-v="role">SDR-led vs AE-direct</button><button data-v="desk">US vs OUS</button><button data-v="repeat">New vs repeat</button>
           </div>
           <button class="linkbtn" data-toggle-table="ov">Show table</button>
+          <button class="linkbtn" data-expand="ov">Expand</button>
         </div>
       </div>
       <div class="legend" id="ovLegend"></div>
@@ -409,23 +414,24 @@ td .who { font-weight: 500; }
     <div class="tiles" id="sdrTiles"></div>
     <div class="card">
       <div class="cardhead">
-        <div><h3>Per SDR</h3><div class="sub">Click a row to highlight that person in the chart below</div></div>
-      </div>
-      <div class="tablewrap" id="sdrTable"></div>
-    </div>
-    <div class="card">
-      <div class="cardhead">
-        <div><h3 id="sdrChartTitle"></h3><div class="sub">One line per SDR, by lead creation date. Click a name to highlight one SDR.</div></div>
+        <div><h3 id="sdrChartTitle"></h3><div class="sub">One line per SDR, by lead creation date. Click a name to hide or show its line.</div></div>
         <div class="controls">
           <div class="seg" data-key="sdrMetric">
             <button data-v="md">Meeting Done %</button><button data-v="l2d">Lead→Deal %</button><button data-v="nr">Non-Response %</button>
           </div>
           <button class="linkbtn" data-toggle-table="sdr">Show table</button>
+          <button class="linkbtn" data-expand="sdr">Expand</button>
         </div>
       </div>
       <div class="legend" id="sdrLegend"></div>
       <div class="chartbox"><canvas id="sdrChart" aria-label="SDR metric over time"></canvas></div>
       <div class="datatable" id="sdrDataTable" hidden></div>
+    </div>
+    <div class="card">
+      <div class="cardhead">
+        <div><h3>Per SDR</h3><div class="sub">Click a row to highlight that person in the chart above</div></div>
+      </div>
+      <div class="tablewrap" id="sdrTable"></div>
     </div>
   </section>
 
@@ -443,6 +449,7 @@ td .who { font-weight: 500; }
             <button data-v="rev">Revenue</button><button data-v="aov">AOV</button><button data-v="md">Meeting Done %</button><button data-v="l2d">Lead→Deal %</button><button data-v="m2c">Meeting→Close %</button>
           </div>
           <button class="linkbtn" data-toggle-table="ae">Show table</button>
+          <button class="linkbtn" data-expand="ae">Expand</button>
         </div>
       </div>
       <div class="legend" id="aeLegend"></div>
@@ -473,8 +480,9 @@ td .who { font-weight: 500; }
     <div class="tiles five" id="habitTiles"></div>
     <div class="card" id="habSdrCard">
       <div class="cardhead">
-        <div><h3 id="habSdrTitle"></h3><div class="sub">SDR-led leads. Click a name to highlight one SDR.</div></div>
+        <div><h3 id="habSdrTitle"></h3><div class="sub">SDR-led leads. Click a name to hide or show its line.</div></div>
         <div class="controls">
+          <button class="linkbtn" data-expand="habSdr" style="order:2">Expand</button>
           <div class="seg" data-key="habSdrMetric">
             <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
           </div>
@@ -486,8 +494,9 @@ td .who { font-weight: 500; }
     </div>
     <div class="card" id="habAeCard">
       <div class="cardhead">
-        <div><h3 id="habAeTitle"></h3><div class="sub">AE-direct leads. Click a name to highlight one AE.</div></div>
+        <div><h3 id="habAeTitle"></h3><div class="sub">AE-direct leads. Click a name to hide or show its line.</div></div>
         <div class="controls">
+          <button class="linkbtn" data-expand="habAe" style="order:2">Expand</button>
           <div class="seg" data-key="habAeMetric">
             <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
           </div>
@@ -547,9 +556,11 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 const DEFAULTS = {
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", focusSDR: null, focusAE: null,
+  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
+if (!S.hidden || typeof S.hidden !== "object") S.hidden = { SDR: [], AE: [] };
+if (!S.expanded || typeof S.expanded !== "object") S.expanded = {};
 const SHOW_TABLE = { ov: false, sdr: false, ae: false };
 let LEADS = [], CALLS = [], META = { airtable: null, aircall: null };
 let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
@@ -988,17 +999,21 @@ function withAlpha(hex, a) { const h = hex.replace("#", ""); const n = parseInt(
 const SERIES = () => ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7"].map(cssVar);
 
 function personColor(p) { const list = p.role === "AE" ? AES : SDRS; const c = SERIES(); return c[list.indexOf(p) % c.length]; }
-// One line per person + a bold team line. Clicking a name in the legend highlights that person.
+// One line per person + a bold team line.
+// Clicking a name hides/shows that line. Clicking the team item shows everyone (or hides everyone if all are showing).
 function peopleTrend(id, labels, rows, team, fmt, focus, focusAttr) {
+  const role = focusAttr === "data-focus-sdr" ? "SDR" : "AE";
+  const hidden = new Set(S.hidden[role] || []);
   const surface = cssVar("--surface"), ink = cssVar("--ink");
   const many = labels.length > 40;
   const ds = rows.map(({ p, data }) => {
     const col = personColor(p), faded = focus && focus !== p.name, c = faded ? withAlpha(col, 0.18) : col;
-    return { label: p.name, data, borderColor: c, backgroundColor: c, borderWidth: faded ? 1.5 : (focus ? 3 : 2), pointRadius: many ? 0 : 3, pointHoverRadius: 5, pointBorderColor: surface, pointBorderWidth: 2, tension: 0.25, spanGaps: true, order: faded ? 3 : 2 };
+    return { label: p.name, data, borderColor: c, backgroundColor: c, borderWidth: faded ? 1.5 : (focus ? 3 : 2), pointRadius: many ? 0 : 3, pointHoverRadius: 5, pointBorderColor: surface, pointBorderWidth: 2, tension: 0.15, spanGaps: true, order: faded ? 3 : 2, hidden: hidden.has(p.name) };
   });
-  if (team) ds.push({ label: team.label, data: team.data, borderColor: ink, backgroundColor: ink, borderWidth: 3, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: true, order: 1 });
-  $(id + "Legend").innerHTML = rows.map(({ p }) => `<button class="lg${focus === p.name ? " on" : ""}" ${focusAttr}="${esc(p.name)}"><i style="background:${personColor(p)}"></i>${esc(p.name)}</button>`).join("") +
-    (team ? `<span><i class="teamkey" style="background:${ink}"></i>${esc(team.label)}</span>` : "");
+  if (team) ds.push({ label: team.label, data: team.data, borderColor: ink, backgroundColor: ink, borderWidth: 3, pointRadius: 0, pointHoverRadius: 4, tension: 0.15, spanGaps: true, order: 1 });
+  const anyHidden = rows.some(({ p }) => hidden.has(p.name));
+  $(id + "Legend").innerHTML = rows.map(({ p }) => `<button class="lg${hidden.has(p.name) ? " off" : ""}" data-toggle-person="${role}|${esc(p.name)}" aria-pressed="${!hidden.has(p.name)}" title="${hidden.has(p.name) ? "Show" : "Hide"} ${esc(p.name)}"><i style="background:${personColor(p)}"></i>${esc(p.name)}</button>`).join("") +
+    (team ? `<button class="lg" data-toggle-all="${role}" data-names="${esc(rows.map(r => r.p.name).join("|"))}" title="${anyHidden ? "Show everyone" : "Hide everyone except the team line"}"><i class="teamkey" style="background:${ink}"></i>${esc(team.label)}<span class="lgnote">${anyHidden ? "show all" : "hide all"}</span></button>` : "");
   destroy(id);
   CHARTS[id] = new Chart($(id + "Chart"), { type: "line", data: { labels, datasets: ds }, options: baseOpts(fmt) });
   return ds;
@@ -1183,7 +1198,7 @@ function renderAE(base, r) {
     md: "AE-direct leads, by lead date. The black line is all AEs together.",
     l2d: "AE-direct leads, by lead date. The black line is all AEs together.",
     m2c: "All of the AE's meetings, including SDR handoffs, by lead date. The black line is all AEs together.",
-  }[k];
+  }[k] + " Click a name to hide or show its line.";
   const ds = peopleTrend("ae", labels, rowsC, teamData ? { label: k === "rev" ? "Average per AE" : "All AEs", data: teamData } : null, v => fmtMetric(k, v, true), S.focusAE, "data-focus-ae");
   $("aeDataTable").hidden = !SHOW_TABLE.ae;
   if (SHOW_TABLE.ae) $("aeDataTable").innerHTML = dataTableHTML(labels, ds, v => fmtMetric(k, v));
@@ -1322,6 +1337,12 @@ function syncControls() {
   });
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === S.tab));
   $("customDates").hidden = S.date !== "custom";
+  document.querySelectorAll("[data-expand]").forEach(b => {
+    const k = b.dataset.expand, on = !!(S.expanded && S.expanded[k]);
+    b.textContent = on ? "Collapse" : "Expand";
+    const box = $(k + "Chart") && $(k + "Chart").parentElement;
+    if (box) box.classList.toggle("tall", on);
+  });
   if (S.date === "custom") { $("dateFrom").value = S.from; $("dateTo").value = S.to; }
 }
 document.addEventListener("click", e => {
@@ -1339,6 +1360,22 @@ document.addEventListener("click", e => {
   if (kpi) { S.kpi = kpi.dataset.kpi; savePrefs(); render(); return; }
   const tt = e.target.closest("[data-toggle-table]");
   if (tt) { const k = tt.dataset.toggleTable; SHOW_TABLE[k] = !SHOW_TABLE[k]; tt.textContent = SHOW_TABLE[k] ? "Hide table" : "Show table"; render(); return; }
+  const tp = e.target.closest("[data-toggle-person]");
+  if (tp) {
+    const [role, name] = tp.dataset.togglePerson.split("|");
+    const h = new Set(S.hidden[role] || []);
+    h.has(name) ? h.delete(name) : h.add(name);
+    S.hidden = Object.assign({}, S.hidden, { [role]: [...h] }); savePrefs(); render(); return;
+  }
+  const ta = e.target.closest("[data-toggle-all]");
+  if (ta) {
+    const role = ta.dataset.toggleAll, names = ta.dataset.names.split("|");
+    const cur = new Set(S.hidden[role] || []);
+    const anyHidden = names.some(n => cur.has(n));
+    S.hidden = Object.assign({}, S.hidden, { [role]: anyHidden ? [] : names }); savePrefs(); render(); return;
+  }
+  const ex = e.target.closest("[data-expand]");
+  if (ex) { const k = ex.dataset.expand; S.expanded = Object.assign({}, S.expanded, { [k]: !S.expanded[k] }); savePrefs(); render(); return; }
   const fs = e.target.closest("[data-focus-sdr]");
   if (fs) { S.focusSDR = S.focusSDR === fs.dataset.focusSdr ? null : fs.dataset.focusSdr; render(); return; }
   const fa = e.target.closest("[data-focus-ae]");
