@@ -254,6 +254,13 @@ button.tile:hover { border-color: var(--axis); }
 .grtrend { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-2); }
 .projnote { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--proj-wash); font-size: 13px; color: var(--ink-2); }
 .projnote ol { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 4px; }
+details.projnote { padding: 0; }
+details.projnote summary { list-style: none; cursor: pointer; padding: 10px 14px; font-weight: 600; color: var(--ink); display: flex; justify-content: space-between; align-items: center; }
+details.projnote summary::-webkit-details-marker { display: none; }
+details.projnote summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; }
+details.projnote[open] summary::after { transform: rotate(45deg); }
+details.projnote > div { padding: 0 14px 12px; }
+details.projnote > div p { margin: 0 0 4px; color: var(--ink-2); font-size: 13px; }
 .projnote p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 .projnote b { color: var(--ink); }
 .tile.soon { border-style: dashed; background: transparent; box-shadow: none; }
@@ -450,7 +457,7 @@ td .who { font-weight: 500; }
       <div class="chartbox"><canvas id="ovChart" aria-label="Metric over time"></canvas></div>
       <div class="datatable" id="ovTable" hidden></div>
       <p class="note" id="ovProjHint" hidden style="margin-top:10px">Switch Group by to Month or Quarter to see the projection.</p>
-      <div class="projnote" id="ovProj" hidden></div>
+      <details class="projnote" id="ovProj" hidden><summary>How the projection works</summary><div id="ovProjBody"></div></details>
     </div>
     <div class="card">
       <div class="cardhead">
@@ -1166,23 +1173,16 @@ Chart.register({
 function projectedIn(P, g, from, to) { // months with start in [from, to)
   let t = 0; for (let k = Math.max(P.cm, mKey(from)); keyDate(k) < to; k++) t += P.projMonth(g, k); return t;
 }
-function projectionExplainer(P, splitLabel) {
-  const pm = (v) => money(v, true);
+function projectionExplainer(P, PP) {
   const lvl = [...P.fits.values()].reduce((t, f) => t + (f ? f.level : 0), 0);
   const g = P.totFit ? P.totFit.g : 0;
-  const idx = P.S12.map((v, i) => [i, v]).sort((a, b) => b[1] - a[1]);
-  const season = P.seasonMonths >= 6
-    ? `Busiest: ${MON_SHORT[idx[0][0]]} ${idx[0][1].toFixed(2)}×, ${MON_SHORT[idx[1][0]]} ${idx[1][1].toFixed(2)}×. Quietest: ${MON_SHORT[idx[11][0]]} ${idx[11][1].toFixed(2)}×, ${MON_SHORT[idx[10][0]]} ${idx[10][1].toFixed(2)}×${P.seasonYears === 1 ? " (half strength: only one year of history so far)" : ""}.`
-    : "not enough history yet, so every month counts the same.";
   const gr = P.totGrowth != null ? `${P.totGrowth >= 1 ? "+" : ""}${Math.round((P.totGrowth - 1) * 100)}%` : null;
-  return `<b>How the projection works</b> <span>· average of two methods</span>
+  return `<p>Green bars = the average of two estimates:</p>
     <ol>
-      <li><b>Run-rate method:</b> ${keyLabel(P.last - 2)}–${keyLabel(P.last)} average with seasonality removed, <b>${pm(lvl)}/month</b>, plus the recent trend (<b>${g >= 0 ? "+" : ""}${(g * 100).toFixed(1)}%/month</b>, fading out month by month), times each month's seasonality. ${season}</li>
-      <li><b>Last-year method:</b> the same month last year × growth over the last ${GROWTH_WINDOW} full months vs a year earlier${gr ? ` (<b>${gr}</b>)` : " (needs more history, so only method 1 is used)"}.</li>
-      <li><b>This month (${MON_SHORT[P.cm % 12]}):</b> actual so far + the projection for the ${Math.round(P.frac * 100)}% of the month left after the last lead in your file (${fmtDate(P.end)}).</li>
-      <li><b>Accuracy:</b> ${P.mape != null ? `tested on the last 8 month-ends, predicting 1–3 months ahead, it missed by <b>±${Math.round(P.mape * 100)}%</b> on average. Read projections as a range.` : "not enough history to test yet."}</li>
+      <li>Recent run-rate (<b>${money(lvl, true)}/month</b>) with a fading trend (<b>${g >= 0 ? "+" : ""}${(g * 100).toFixed(1)}%/month</b>), adjusted for seasonality.</li>
+      ${gr ? `<li>Same month last year × recent growth (<b>${gr}</b>).</li>` : ""}
     </ol>
-    <p>${P.fits.size > 1 ? `Each ${esc(splitLabel)} group is projected on its own. ` : ""}Every filter at the top applies. The growth figure in method 2 uses all leads, because B2B tags in the export are incomplete before Sep 2025.</p>`;
+    <p>This month = actual so far + the rest of the month.${PP ? ` Black line = pipeline: actual ${money(PP.actual, true)} + open leads ${money(PP.open, true)} + new leads to come ${money(PP.fresh, true)}.` : ""}${P.mape != null ? ` Typical miss: <b>±${Math.round(P.mape * 100)}%</b>.` : ""}</p>`;
 }
 
 /* ================= RENDER: shared pieces ================= */
@@ -1428,8 +1428,7 @@ function renderOverview(base, r) {
     else PP = null;
   }
   $("ovProj").hidden = !(P && datasets.some(d => d.projected));
-  if (!$("ovProj").hidden) $("ovProj").innerHTML = projectionExplainer(P, { none: "", role: "SDR-led / AE-direct", desk: "desk", repeat: "new / repeat" }[S.split]) +
-    (PP ? `<p><b>Black line on ${MON_SHORT[PP.key % 12]} = pipeline projection, ${money(PP.total, true)}:</b> actual so far ${money(PP.actual, true)} + leads already in that are likely to close ${money(PP.open, true)} (about ${Math.round(PP.openDeals)} deals, based on how often leads of the same age closed in the ${PP.daysLeft} days left) + leads still to come ${money(PP.fresh, true)} (${PP.perDay.toFixed(0)} new leads a day × what a new lead usually brings in before month end).</p>` : "");
+  if (!$("ovProj").hidden) $("ovProjBody").innerHTML = projectionExplainer(P, PP);
   $("ovProjHint").hidden = !(isRev && S.group === "week" && r.end > today0);
   renderGrowth(growthLeads);
 
