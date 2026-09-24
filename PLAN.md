@@ -18,7 +18,7 @@ Each has a view switch: **Whole team / SDRs / AEs**
 ## Switches (change every number)
 All filters are dropdowns in the top bar.
 - **People:** checkbox list of every SDR and AE (+ former team members). Unticked people's leads and deals are removed from every number, chart and table.
-- **View:** Whole team / SDR-led / AE-direct (Overview and Habits)
+- **View:** Whole team / SDR-led / AE-direct (Overview tab)
 - **Date range:** this month / last month / last 90 days / this year / all / custom
 - **Leads:** B2B only (default) / All leads
 - **Desk:** All / US / OUS
@@ -35,21 +35,20 @@ All filters are dropdowns in the top bar.
 - Funnel: Leads → Called → Meeting Done → Closed
 - Top Lost and Disqualified reasons
 
-**2. SDRs** (one row per SDR, click for detail)
-- Meeting Done % (main), Lead→Deal %, Non-Response %
-- Breakdown: leads, revenue from their leads, AOV, AE-rejected %
+**2. SDRs** (SDR-led leads)
+- Tiles: Meeting Done % (main), Lead→Deal %, Non-Response %, SDR-led leads
+- Monthly chart (one line per SDR + SDR team), then per-SDR table (leads, revenue, AOV, AE-rejected %)
+- Calls & cadence: coverage, median time to first call, second-day call %, "not responsive" never called, cadence (reserved) — tiles, monthly chart, per-SDR table
+- Bottom: Why leads drop out, Lost / Disqualified switch
 
 **3. AEs** (grouped by desk, Andrew flagged)
-- Revenue, AOV, Meeting Done % (direct leads), Lead→Deal % (direct leads)
-- Monthly chart above the table: one line per AE + "All AEs", metric picker (Revenue, AOV, Meeting Done %, Lead→Deal %, Meeting→Close %)
-- Breakdown: Meeting→Close % (incl. SDR handoffs), lost reasons
+- Leads switch: AE-direct (default) / From SDRs / All leads — applies to everything on the tab
+- Tiles: Revenue, AOV, Meeting Done %, Lead→Deal %
+- Monthly chart (one line per AE + All AEs; Revenue, AOV, Meeting Done %, Lead→Deal %, Meeting→Close %), then per-AE table
+- Calls & cadence: same as SDRs, for AEs
+- Bottom: Why leads drop out, Lost / Disqualified switch
 
-**4. Habits** (split into an SDR section and an AE section, each with its own monthly chart + table — needs Aircall file)
-- Call coverage % (leads called at least once)
-- Median time to first call (speed to lead)
-- Second-day call % (called again on a later day)
-- "Not responsive" but never called %
-- Cadence adherence — reserved spot, definition TBD
+(The separate Habits tab was removed; its content lives on the SDRs and AEs tabs.)
 
 ## Rules
 - Every % shows its count next to it, e.g. "22% (of 41)".

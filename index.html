@@ -192,6 +192,8 @@ main { padding-block: 20px 60px; }
 .sechead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .sechead h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
 .sechead p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.sechead.sub2 { margin-top: 14px; }
+.sechead.sub2 h2 { font-size: 17px; }
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   padding: 16px 18px; box-shadow: var(--shadow); min-width: 0;
@@ -323,7 +325,6 @@ td .who { font-weight: 500; }
         <button data-tab="overview">Overview</button>
         <button data-tab="sdr">SDRs</button>
         <button data-tab="ae">AEs</button>
-        <button data-tab="habits">Habits</button>
       </nav>
       <div class="data-status">
         <span class="pill" id="pillAirtable"><i></i>Airtable: not loaded</span>
@@ -341,7 +342,7 @@ td .who { font-weight: 500; }
       </div>
       <div class="field">
         <label class="flabel" for="fView">View</label>
-        <select class="select" id="fView" data-key="view" title="Changes the Overview and Habits tabs">
+        <select class="select" id="fView" data-key="view" title="Changes the Overview tab">
           <option value="all">Whole team</option><option value="sdr">SDR-led leads</option><option value="ae">AE-direct leads</option>
         </select>
       </div>
@@ -466,12 +467,42 @@ td .who { font-weight: 500; }
       </div>
       <div class="tablewrap" id="sdrTable"></div>
     </div>
+    <div class="sechead sub2">
+      <div><h2>Calls &amp; cadence</h2><p id="sdrCallsNote">Calls from the Aircall export, matched to leads by phone number.</p></div>
+    </div>
+    <div class="banner" id="sdrCallsBanner" hidden></div>
+    <div class="tiles five" id="sdrCallTiles"></div>
+    <div class="card" id="sdrCallsCard">
+      <div class="cardhead">
+        <div><h3 id="sdrCallsTitle"></h3><div class="sub">One line per SDR. Click a name to hide or show its line.</div></div>
+        <div class="controls">
+          <div class="seg" data-key="sdrCallMetric">
+            <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
+          </div>
+          <button class="linkbtn" data-expand="sdrCalls">Expand</button>
+        </div>
+      </div>
+      <div class="legend" id="sdrCallsLegend"></div>
+      <div class="chartbox"><canvas id="sdrCallsChart" aria-label="SDR calls over time"></canvas></div>
+      <div class="tablewrap" id="sdrCallsTable" style="margin-top:14px"></div>
+      <p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within 14 days of the lead coming in. Second-day call = called again on a later day than the first call. “Never called” = leads marked “Not responsive” that got no call. Months with very few leads are left blank.</p>
+    </div>
+    <div class="card">
+      <div class="cardhead">
+        <div><h3 id="sdrReasonsTitle">Why leads drop out</h3><div class="sub" id="sdrReasonsSub">Leads created in the date range</div></div>
+        <div class="seg" data-key="sdrReason"><button data-v="lost">Lost</button><button data-v="dq">Disqualified</button></div>
+      </div>
+      <div class="hbars" id="sdrReasons"></div>
+    </div>
   </section>
 
   <!-- AES -->
   <section class="tabpane" id="pane-ae" hidden>
     <div class="sechead">
-      <div><h2>Account Executives</h2><p>Meeting Done % and Lead→Deal % use AE-direct leads only. Revenue counts every deal the AE closed.</p></div>
+      <div><h2>Account Executives</h2><p id="aeScopeNote"></p></div>
+      <div class="field"><label class="flabel" for="fAeScope">Leads</label>
+        <select class="select" id="fAeScope" data-key="aeScope"><option value="direct">AE-direct leads</option><option value="sdr">From SDRs</option><option value="all">All leads</option></select>
+      </div>
     </div>
     <div class="tiles" id="aeTiles"></div>
     <div class="card">
@@ -495,48 +526,33 @@ td .who { font-weight: 500; }
       </div>
       <div class="tablewrap" id="aeTable"></div>
     </div>
+    <div class="sechead sub2">
+      <div><h2>Calls &amp; cadence</h2><p id="aeCallsNote">Calls from the Aircall export, matched to leads by phone number.</p></div>
+    </div>
+    <div class="banner" id="aeCallsBanner" hidden></div>
+    <div class="tiles five" id="aeCallTiles"></div>
+    <div class="card" id="aeCallsCard">
+      <div class="cardhead">
+        <div><h3 id="aeCallsTitle"></h3><div class="sub">One line per AE. Click a name to hide or show its line.</div></div>
+        <div class="controls">
+          <div class="seg" data-key="aeCallMetric">
+            <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
+          </div>
+          <button class="linkbtn" data-expand="aeCalls">Expand</button>
+        </div>
+      </div>
+      <div class="legend" id="aeCallsLegend"></div>
+      <div class="chartbox"><canvas id="aeCallsChart" aria-label="AE calls over time"></canvas></div>
+      <div class="tablewrap" id="aeCallsTable" style="margin-top:14px"></div>
+      <p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within 14 days of the lead coming in. Second-day call = called again on a later day than the first call. “Never called” = leads marked “Not responsive” that got no call. Months with very few leads are left blank.</p>
+    </div>
     <div class="card">
-      <div class="cardhead"><div><h3 id="aeLostTitle">Lost reasons</h3><div class="sub">Leads created in the date range</div></div></div>
-      <div class="hbars" id="aeLost"></div>
-    </div>
-  </section>
-
-  <!-- HABITS -->
-  <section class="tabpane" id="pane-habits" hidden>
-    <div class="sechead">
-      <div><h2>Habits</h2><p id="habitsNote">Calls from the Aircall export, matched to leads by phone number.</p></div>
-    </div>
-    <div class="banner" id="habitsBanner" hidden></div>
-    <div class="tiles five" id="habitTiles"></div>
-    <div class="card" id="habSdrCard">
       <div class="cardhead">
-        <div><h3 id="habSdrTitle"></h3><div class="sub">SDR-led leads. Click a name to hide or show its line.</div></div>
-        <div class="controls">
-          <button class="linkbtn" data-expand="habSdr" style="order:2">Expand</button>
-          <div class="seg" data-key="habSdrMetric">
-            <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
-          </div>
-        </div>
+        <div><h3 id="aeReasonsTitle">Why leads drop out</h3><div class="sub" id="aeReasonsSub">Leads created in the date range</div></div>
+        <div class="seg" data-key="aeReason"><button data-v="lost">Lost</button><button data-v="dq">Disqualified</button></div>
       </div>
-      <div class="legend" id="habSdrLegend"></div>
-      <div class="chartbox short"><canvas id="habSdrChart" aria-label="SDR habit over time"></canvas></div>
-      <div class="tablewrap" id="habSdrTable" style="margin-top:14px"></div>
+      <div class="hbars" id="aeReasons"></div>
     </div>
-    <div class="card" id="habAeCard">
-      <div class="cardhead">
-        <div><h3 id="habAeTitle"></h3><div class="sub">AE-direct leads. Click a name to hide or show its line.</div></div>
-        <div class="controls">
-          <button class="linkbtn" data-expand="habAe" style="order:2">Expand</button>
-          <div class="seg" data-key="habAeMetric">
-            <button data-v="cov">Call coverage</button><button data-v="ttf">Time to first call</button><button data-v="d2">Second-day call %</button><button data-v="nrc">Never called</button>
-          </div>
-        </div>
-      </div>
-      <div class="legend" id="habAeLegend"></div>
-      <div class="chartbox short"><canvas id="habAeChart" aria-label="AE habit over time"></canvas></div>
-      <div class="tablewrap" id="habAeTable" style="margin-top:14px"></div>
-    </div>
-    <p class="note" id="habFoot"></p>
   </section>
 
   <details class="fxnote" id="fxNote" hidden>
@@ -586,7 +602,7 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 const DEFAULTS = {
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
+  sdrMetric: "md", aeMetric: "rev", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
 if (!S.hidden || typeof S.hidden !== "object") S.hidden = { SDR: [], AE: [] };
@@ -1012,6 +1028,18 @@ function topReasons(leads, bucket, n = 7) {
   return [...map.values()].sort((a, b) => b.v - a.v).slice(0, n);
 }
 
+function reasonCounts(pool, type) {
+  const all = topReasons(pool, type, 1e9);
+  return { items: all.slice(0, 10), total: all.reduce((t, i) => t + i.v, 0) };
+}
+function renderReasons(pre, pool, who) {
+  const type = S[pre + "Reason"] === "dq" ? "dq" : "lost";
+  const { items, total } = reasonCounts(pool, type);
+  $(pre + "ReasonsTitle").textContent = `${type === "lost" ? "Lost" : "Disqualified"} reasons: ${who}`;
+  $(pre + "ReasonsSub").textContent = `${fmtInt(total)} ${type === "lost" ? "lost" : "disqualified"} leads created in the date range. % = share of all ${type === "lost" ? "lost" : "disqualified"} leads.`;
+  $(pre + "Reasons").innerHTML = hbarsHTML(items, total, { neutral: true });
+}
+
 /* Chart.js */
 // Hover rules for every chart: on a dot or bar = just that one. On the dates under the chart = everyone for that date.
 Chart.Interaction.modes.smart = function (chart, e, options, useFinal) {
@@ -1085,7 +1113,8 @@ function render() {
   syncControls();
   const has = LEADS.length > 0;
   $("emptyState").hidden = has;
-  for (const t of ["overview", "sdr", "ae", "habits"]) $("pane-" + t).hidden = !has || S.tab !== t;
+  if (!["overview", "sdr", "ae"].includes(S.tab)) S.tab = "overview";
+  for (const t of ["overview", "sdr", "ae"]) $("pane-" + t).hidden = !has || S.tab !== t;
   renderStatus();
   $("fxNote").hidden = !has;
   if (!has) return;
@@ -1095,8 +1124,7 @@ function render() {
   const base = baseLeads();
   if (S.tab === "overview") renderOverview(base, r);
   else if (S.tab === "sdr") renderSDR(base, r);
-  else if (S.tab === "ae") renderAE(base, r);
-  else renderHabits(base, r);
+  else renderAE(base, r);
 }
 
 function renderStatus() {
@@ -1238,6 +1266,10 @@ function renderSDR(base, r) {
   const ds = peopleTrend("sdr", labels, rowsC, teamSer ? { label: "SDR team", data: teamSer.map(acc => m.val(acc)) } : null, v => pct(v, 0), S.focusSDR, "data-focus-sdr");
   $("sdrDataTable").hidden = !SHOW_TABLE.sdr;
   if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, ds, v => pct(v));
+
+  renderCalls("sdr", "SDR", people, (L, nm) => L.sdr === nm, base, r);
+  const fsdr = S.focusSDR && names.has(S.focusSDR) ? S.focusSDR : null;
+  renderReasons("sdr", leads.filter(L => inR(L.created, r) && (fsdr ? L.sdr === fsdr : names.has(L.sdr))), fsdr || "SDR team");
 }
 
 /* ---------- AEs ---------- */
@@ -1255,22 +1287,28 @@ function aeMetricVal(k, x) {
   if (k === "l2d") return x.dir.n ? x.dir.cl / x.dir.n : null;
   if (k === "m2c") return x.all.md ? x.all.mdc / x.all.md : null;
 }
-function aeBucketVal(k, all, dir) {
-  if (k === "rev") return all.rev;
-  if (k === "aov") return all.deals ? all.rev / all.deals : null;
-  if (k === "md") return dir.n >= 5 ? dir.md / dir.n : null;
-  if (k === "l2d") return dir.n >= 5 ? dir.cl / dir.n : null;
-  if (k === "m2c") return all.md >= 3 ? all.mdc / all.md : null;
+const AE_SCOPES = {
+  direct: { test: L => !L.sdr, label: "AE-direct leads", note: "AE-direct leads only (no SDR Owner): leads the AE works from first touch." },
+  sdr:    { test: L => !!L.sdr, label: "leads from SDRs", note: "Leads handed over by SDRs only (SDR Owner filled in)." },
+  all:    { test: () => true, label: "all leads", note: "Every lead the AE owns: their direct leads plus SDR handoffs." },
+};
+function aeBucketVal(k, a) {
+  if (k === "rev") return a.rev;
+  if (k === "aov") return a.deals ? a.rev / a.deals : null;
+  if (k === "md") return a.n >= 5 ? a.md / a.n : null;
+  if (k === "l2d") return a.n >= 5 ? a.cl / a.n : null;
+  if (k === "m2c") return a.md >= 3 ? a.mdc / a.md : null;
 }
 function renderAE(base, r) {
-  const direct = base.filter(L => !L.sdr);
-  const aAll = accumulate(base, r), pAll = r.prev ? accumulate(base, r.prev) : null;
-  const aDir = accumulate(direct, r), pDir = r.prev ? accumulate(direct, r.prev) : null;
+  const scope = AE_SCOPES[S.aeScope] || AE_SCOPES.direct;
+  const leads = base.filter(scope.test);
+  $("aeScopeNote").textContent = scope.note + " Leads created in the date range; revenue by close date.";
+  const a = accumulate(leads, r), p = r.prev ? accumulate(leads, r.prev) : null;
   $("aeTiles").innerHTML =
-    tileHTML("rev", aAll, pAll, r, { spark: sparkVals(base, "rev", r) }) +
-    tileHTML("aov", aAll, pAll, r, { spark: sparkVals(base, "aov", r) }) +
-    tileHTML("md", aDir, pDir, r, { label: "Meeting Done % (direct)", spark: sparkVals(direct, "md", r) }) +
-    tileHTML("l2d", aDir, pDir, r, { label: "Lead→Deal % (direct)", spark: sparkVals(direct, "l2d", r) });
+    tileHTML("rev", a, p, r, { spark: sparkVals(leads, "rev", r) }) +
+    tileHTML("aov", a, p, r, { spark: sparkVals(leads, "aov", r) }) +
+    tileHTML("md", a, p, r, { spark: sparkVals(leads, "md", r) }) +
+    tileHTML("l2d", a, p, r, { spark: sparkVals(leads, "l2d", r) });
 
   const people = activePeople(AES);
   const names = new Set(people.map(p => p.name));
@@ -1278,46 +1316,38 @@ function renderAE(base, r) {
   // Month-over-month chart: one line per AE + all AEs
   const k = S.aeMetric, m = METRICS[k];
   const buckets = bucketsBetween(r.start, r.end), labels = buckets.map(bucketLabel);
-  const byAE = L => names.has(L.ae) ? L.ae : null, team = L => names.has(L.ae) ? "t" : null;
-  const serAll = series(base, buckets, byAE), serDir = series(direct, buckets, byAE);
-  const tAll = series(base, buckets, team).get("t"), tDir = series(direct, buckets, team).get("t");
-  const blank = buckets.map(emptyAcc);
-  const rowsC = people.filter(p => serAll.has(p.name)).map(p => ({ p, data: buckets.map((_, i) => aeBucketVal(k, serAll.get(p.name)[i], (serDir.get(p.name) || blank)[i])) }));
-  const teamData = tAll ? buckets.map((_, i) => { const v = aeBucketVal(k, tAll[i], (tDir || blank)[i]); return k === "rev" && v != null ? v / (people.length || 1) : v; }) : null;
+  const ser = series(leads, buckets, L => names.has(L.ae) ? L.ae : null);
+  const tSer = series(leads, buckets, L => names.has(L.ae) ? "t" : null).get("t");
+  const rowsC = people.filter(p => ser.has(p.name)).map(p => ({ p, data: ser.get(p.name).map(acc => aeBucketVal(k, acc)) }));
+  const teamData = tSer ? tSer.map(acc => { const v = aeBucketVal(k, acc); return k === "rev" && v != null ? v / (people.length || 1) : v; }) : null;
   $("aeChartTitle").textContent = `${m.label} by ${S.group}, per AE`;
-  $("aeChartSub").textContent = {
-    rev: "Deals closed, by close date. The black line is the average per AE.",
-    aov: "Deals closed, by close date. The black line is all AEs together.",
-    md: "AE-direct leads, by lead date. The black line is all AEs together.",
-    l2d: "AE-direct leads, by lead date. The black line is all AEs together.",
-    m2c: "All of the AE's meetings, including SDR handoffs, by lead date. The black line is all AEs together.",
-  }[k] + " Click a name to hide or show its line.";
+  $("aeChartSub").textContent = `${scope.label.charAt(0).toUpperCase() + scope.label.slice(1)}, ${m.basis === "close" ? "by close date" : "by lead date"}. The black line is ${k === "rev" ? "the average per AE" : "all AEs together"}. Click a name to hide or show its line.`;
   const ds = peopleTrend("ae", labels, rowsC, teamData ? { label: k === "rev" ? "Average per AE" : "All AEs", data: teamData } : null, v => fmtMetric(k, v, true), S.focusAE, "data-focus-ae");
   $("aeDataTable").hidden = !SHOW_TABLE.ae;
   if (SHOW_TABLE.ae) $("aeDataTable").innerHTML = dataTableHTML(labels, ds, v => fmtMetric(k, v));
 
   // Table
-  const rows = people.map(s => ({ s, x: aeAcc(base, s.name, r) }));
-  let html = `<table><thead><tr><th>AE</th><th>Revenue</th><th>Deals</th><th>AOV</th><th>Direct leads</th><th>Meeting Done %</th><th>Lead→Deal %</th><th>SDR handoffs</th><th>Meeting→Close %</th></tr></thead><tbody>`;
+  const rows = people.map(s => ({ s, x: accumulate(leads.filter(L => L.ae === s.name), r) }));
+  let html = `<table><thead><tr><th>AE</th><th>Revenue</th><th>Deals</th><th>AOV</th><th>Leads</th><th>Meeting Done %</th><th>Lead→Deal %</th><th>Meeting→Close %</th></tr></thead><tbody>`;
   for (const desk of ["US", "OUS"]) {
     const grp = rows.filter(o => o.s.desk === desk);
     if (!grp.length) continue;
-    html += `<tr class="grouprow"><td colspan="9">${desk} desk</td></tr>`;
+    html += `<tr class="grouprow"><td colspan="8">${desk} desk</td></tr>`;
     for (const { s, x } of grp) {
       html += `<tr class="person${S.focusAE === s.name ? " focus" : ""}" data-ae="${esc(s.name)}" tabindex="0">
         <td><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;background:${personColor(s)}"></i><span class="who">${esc(s.name)}</span>${s.chip ? `<span class="chip">${esc(s.chip)}</span>` : ""}</td>
-        <td>${money(x.all.rev)}</td><td>${fmtInt(x.all.deals)}</td><td>${money(x.all.deals ? x.all.rev / x.all.deals : null)}</td>
-        <td>${fmtInt(x.dir.n)}</td>${cellPct(x.dir.md, x.dir.n)}${cellPct(x.dir.cl, x.dir.n)}
-        <td>${fmtInt(x.handoffs)}</td>${cellPct(x.all.mdc, x.all.md)}</tr>`;
+        <td>${money(x.rev)}</td><td>${fmtInt(x.deals)}</td><td>${money(x.deals ? x.rev / x.deals : null)}</td>
+        <td>${fmtInt(x.n)}</td>${cellPct(x.md, x.n)}${cellPct(x.cl, x.n)}${cellPct(x.mdc, x.md)}</tr>`;
     }
   }
-  html += `</tbody></table><p class="note" style="margin:10px 4px 0">Direct leads = no SDR Owner. SDR handoffs = SDR-led leads with a Meeting Done. Meeting→Close % covers all of the AE's meetings, including handoffs. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
+  const tot = accumulate(leads.filter(L => names.has(L.ae)), r);
+  html += `<tr class="totalrow"><td>All AEs</td><td>${money(tot.rev)}</td><td>${fmtInt(tot.deals)}</td><td>${money(tot.deals ? tot.rev / tot.deals : null)}</td><td>${fmtInt(tot.n)}</td>${cellPct(tot.md, tot.n)}${cellPct(tot.cl, tot.n)}${cellPct(tot.mdc, tot.md)}</tr>`;
+  html += `</tbody></table><p class="note" style="margin:10px 4px 0">Showing ${scope.label}. Change it with the Leads switch at the top of this tab. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
   $("aeTable").innerHTML = html;
 
+  renderCalls("ae", "AE", people, (L, nm) => scope.test(L) && L.ae === nm, base, r);
   const focus = S.focusAE && names.has(S.focusAE) ? S.focusAE : null;
-  $("aeLostTitle").textContent = focus ? `Lost reasons: ${focus}` : "Lost reasons: all AEs";
-  const lostPool = base.filter(L => inR(L.created, r) && (focus ? L.ae === focus : names.has(L.ae)));
-  $("aeLost").innerHTML = hbarsHTML(topReasons(lostPool, "lost", 7), null, { neutral: true, noPct: true });
+  renderReasons("ae", leads.filter(L => inR(L.created, r) && (focus ? L.ae === focus : names.has(L.ae))), focus || "all AEs");
 }
 
 /* ---------- Habits ---------- */
@@ -1368,53 +1398,48 @@ const HAB_KEYS = {
   nrc: { label: "“Not responsive”, never called", fmt: v => pct(v, 0), val: h => h.nr >= 3 ? h.nrcp : null },
 };
 function localDay(utcMs) { const d = new Date(utcMs + AIRTABLE_TZ_OFFSET_H * 3600e3); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
-function renderHabits(base, r) {
-  const banner = $("habitsBanner");
+// Calls & cadence section, used on both the SDRs tab and the AEs tab.
+function renderCalls(pre, role, people, pick, base, r) {
+  const banner = $(pre + "CallsBanner");
+  const ids = [pre + "CallTiles", pre + "CallsCard"];
   if (!CALLS.length) {
     banner.hidden = false;
-    banner.innerHTML = "Load the Aircall call history export to fill this tab. Drop it anywhere on the page.";
-    $("habitTiles").innerHTML = ""; $("habSdrCard").hidden = true; $("habAeCard").hidden = true; $("habFoot").textContent = "";
+    banner.textContent = "Load the Aircall call history export to fill this section. Drop it anywhere on the page.";
+    $(pre + "CallTiles").innerHTML = ""; $(pre + "CallsCard").hidden = true; destroy(pre + "Calls");
     return;
   }
-  const aeCalls = [...CALL_USERS].some(u => AES.some(a => a.name === u));
-  banner.hidden = aeCalls;
-  banner.innerHTML = "This Aircall file only has SDR calls, so AE numbers read as “not called”. Export Aircall with AE lines included to fill them in.";
-  $("habitsNote").textContent = `Calls from ${fmtDate(new Date(CALL_WINDOW.start))} to ${fmtDate(new Date(CALL_WINDOW.end))}, matched to leads by phone number. Only leads created inside that window count.`;
-  const leads = viewFilter(base, S.view);
-  const h = habitAcc(leads, r), p = r.prev ? habitAcc(leads, r.prev) : null;
-  $("habitTiles").innerHTML = ["cov", "ttf", "d2", "nrc"].map(k => habitTile(k, h, p, r)).join("") +
-    `<div class="tile soon"><div class="tl">Cadence adherence<em>SDRs and AEs</em></div><div class="tv">Coming soon</div><div class="tc">Reserved until the cadence rule is defined</div></div>`;
+  $(pre + "CallsCard").hidden = false;
+  const noAeCalls = role === "AE" && ![...CALL_USERS].some(u => AES.some(a => a.name === u));
+  banner.hidden = !noAeCalls;
+  banner.textContent = "This Aircall file only has SDR calls, so AE numbers read as “not called”. Export Aircall with AE lines included to fill them in.";
+  $(pre + "CallsNote").textContent = `Calls from ${fmtDate(new Date(CALL_WINDOW.start))} to ${fmtDate(new Date(CALL_WINDOW.end))}, matched to leads by phone number. Only leads created inside that window count.`;
 
-  // Buckets limited to the dates the call file covers
+  const teamLeads = base.filter(L => people.some(pp => pick(L, pp.name)));
+  const h = habitAcc(teamLeads, r), pv = r.prev ? habitAcc(teamLeads, r.prev) : null;
+  $(pre + "CallTiles").innerHTML = ["cov", "ttf", "d2", "nrc"].map(k => habitTile(k, h, pv, r)).join("") +
+    `<div class="tile soon"><div class="tl">Cadence adherence<em>${role}s</em></div><div class="tv">Coming soon</div><div class="tc">Reserved until the cadence rule is defined</div></div>`;
+
+  // Chart buckets limited to the dates the call file covers
   const cwStart = localDay(CALL_WINDOW.start), cwEnd = new Date(localDay(CALL_WINDOW.end).getTime() + 86400e3);
   const hStart = r.start > cwStart ? r.start : cwStart, hEnd = r.end < cwEnd ? r.end : cwEnd;
   const buckets = hStart < hEnd ? bucketsBetween(hStart, hEnd) : [];
   const ranges = buckets.map(b => ({ start: b, end: nextBucket(b) }));
+  const H = HAB_KEYS[S[pre + "CallMetric"]] || HAB_KEYS.cov;
+  $(pre + "CallsTitle").textContent = `${H.label} by ${S.group}`;
+  const rowsAll = people.map(pp => { const pl = base.filter(L => pick(L, pp.name)); return { p: pp, pl, data: ranges.map(b => H.val(habitAcc(pl, b))) }; });
+  const team = { label: role === "SDR" ? "SDR team" : "All AEs", data: ranges.map(b => H.val(habitAcc(teamLeads, b))) };
+  peopleTrend(pre + "Calls", buckets.map(bucketLabel), rowsAll.filter(x => x.data.some(v => v != null)), team, H.fmt, role === "SDR" ? S.focusSDR : S.focusAE, role === "SDR" ? "data-focus-sdr" : "data-focus-ae");
+
   const callsBy = new Map();
   for (const c of CALLS) if (c.dir === "outbound" && inR(localDay(c.t), r)) callsBy.set(c.user, (callsBy.get(c.user) || 0) + 1);
-
-  const section = (role) => {
-    const isSdr = role === "SDR", pre = isSdr ? "habSdr" : "habAe";
-    $(pre + "Card").hidden = isSdr ? S.view === "ae" : S.view === "sdr";
-    if ($(pre + "Card").hidden) return;
-    const people = activePeople(isSdr ? SDRS : AES);
-    const pick = (L, nm) => isSdr ? L.sdr === nm : (!L.sdr && L.ae === nm);
-    const hk = S[isSdr ? "habSdrMetric" : "habAeMetric"], H = HAB_KEYS[hk];
-    $(pre + "Title").textContent = `${isSdr ? "SDR" : "AE"} habits: ${H.label} by ${S.group}`;
-    const rowsAll = people.map(pp => { const pl = base.filter(L => pick(L, pp.name)); return { p: pp, pl, data: ranges.map(b => H.val(habitAcc(pl, b))) }; });
-    const teamLeads = base.filter(L => people.some(pp => pick(L, pp.name)));
-    const team = { label: isSdr ? "SDR team" : "All AEs", data: ranges.map(b => H.val(habitAcc(teamLeads, b))) };
-    peopleTrend(pre, buckets.map(bucketLabel), rowsAll.filter(x => x.data.some(v => v != null)), team, H.fmt, isSdr ? S.focusSDR : S.focusAE, isSdr ? "data-focus-sdr" : "data-focus-ae");
-    let html = `<table><thead><tr><th>${isSdr ? "SDR" : "AE"}</th><th>Calls made</th><th>Leads</th><th>Call coverage</th><th>Median first call</th><th>Second-day call %</th><th>“Not responsive”, never called</th><th>Cadence</th></tr></thead><tbody>`;
-    for (const { p: pp, pl } of rowsAll) {
-      const x = habitAcc(pl, r);
-      html += `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;background:${personColor(pp)}"></i><span class="who">${esc(pp.name)}</span><span class="chip">${pp.desk}</span></td><td>${fmtInt(callsBy.get(pp.name) || 0)}</td><td>${fmtInt(x.n)}</td>
-        ${cellPct(x.called, x.n)}<td${x.called < SMALL_SAMPLE ? ' class="small"' : ""}>${dur(x.med)}</td>${cellPct(x.d2, x.called)}${cellPct(x.nrNever, x.nr)}<td class="soon-cell">Coming soon</td></tr>`;
-    }
-    $(pre + "Table").innerHTML = html + `</tbody></table>`;
-  };
-  section("SDR"); section("AE");
-  $("habFoot").textContent = `A call counts for a lead if it goes to the lead's phone number within ${CALL_LOOKAHEAD_DAYS} days of the lead coming in. Second-day call = called again on a later day than the first call. Months with very few leads are left blank on the charts.`;
+  let html = `<table><thead><tr><th>${role}</th><th>Calls made</th><th>Leads</th><th>Call coverage</th><th>Median first call</th><th>Second-day call %</th><th>Never called</th><th>Cadence</th></tr></thead><tbody>`;
+  for (const { p: pp, pl } of rowsAll) {
+    const x = habitAcc(pl, r);
+    html += `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;background:${personColor(pp)}"></i><span class="who">${esc(pp.name)}</span><span class="chip">${pp.desk}</span></td><td>${fmtInt(callsBy.get(pp.name) || 0)}</td><td>${fmtInt(x.n)}</td>
+      ${cellPct(x.called, x.n)}<td${x.called < SMALL_SAMPLE ? ' class="small"' : ""}>${dur(x.med)}</td>${cellPct(x.d2, x.called)}${cellPct(x.nrNever, x.nr)}<td class="soon-cell">Coming soon</td></tr>`;
+  }
+  html += `<tr class="totalrow"><td>${team.label}</td><td>${fmtInt(people.reduce((t, pp) => t + (callsBy.get(pp.name) || 0), 0))}</td><td>${fmtInt(h.n)}</td>${cellPct(h.called, h.n)}<td>${dur(h.med)}</td>${cellPct(h.d2, h.called)}${cellPct(h.nrNever, h.nr)}<td></td></tr>`;
+  $(pre + "CallsTable").innerHTML = html + `</tbody></table>`;
 }
 
 /* ================= CONTROLS ================= */
@@ -1552,7 +1577,7 @@ function showToast(msg) {
 /* ================= BOOT ================= */
 (async function boot() {
   const h = (location.hash || "").slice(1);
-  if (["overview", "sdr", "ae", "habits"].includes(h)) S.tab = h;
+  if (["overview", "sdr", "ae"].includes(h)) S.tab = h;
   render();
   const [a, c] = await Promise.all([idbGet("airtable"), idbGet("aircall")]);
   if (a) ingest("airtable", a.text, a.name, a.at);
