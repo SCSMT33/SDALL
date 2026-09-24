@@ -141,9 +141,39 @@ button { cursor: pointer; }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
 
 .filters {
-  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
-  padding-block: 0 12px;
+  display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end;
+  padding-block: 2px 12px;
 }
+.field { display: grid; gap: 3px; position: relative; }
+.field .flabel { font-size: 10.5px; }
+.select {
+  appearance: none; -webkit-appearance: none;
+  height: 32px; min-width: 112px; padding: 0 30px 0 10px; border-radius: 8px;
+  border: 1px solid var(--border); background-color: var(--surface); color: var(--ink);
+  font-size: 13px; font-weight: 500; text-align: left; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 14px, calc(100% - 10px) 14px; background-size: 5px 5px; background-repeat: no-repeat;
+  box-shadow: var(--shadow);
+}
+.select:hover { border-color: var(--axis); }
+.select:disabled { opacity: 0.5; cursor: default; }
+input.select[type="date"] { min-width: 0; width: 132px; padding-right: 6px; background-image: none; cursor: text; }
+.custom-dates { display: inline-flex; gap: 6px; }
+#peopleBtn { min-width: 170px; }
+#peopleBtn.filtered { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.popover {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; width: 290px; max-height: 70vh; overflow: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+.popover .pophead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.popover .pophead b { font-size: 13px; }
+.popover h5 { margin: 10px 4px 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.popover label.opt { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.popover label.opt:hover { background: var(--surface-2); }
+.popover label.opt input { width: 15px; height: 15px; accent-color: var(--accent); margin: 0; }
+.popover label.opt i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.popover label.opt small { margin-left: auto; color: var(--muted); font-size: 11px; }
 .fgroup { display: flex; align-items: center; gap: 8px; }
 .flabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
 .seg {
@@ -155,10 +185,6 @@ button { cursor: pointer; }
 }
 .seg button:hover { color: var(--ink); }
 .seg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--border), var(--shadow); font-weight: 600; }
-.custom-dates { display: inline-flex; gap: 6px; align-items: center; }
-.custom-dates input {
-  border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 3px 6px; font-size: 13px;
-}
 
 /* ---------- Main ---------- */
 main { padding-block: 20px 60px; }
@@ -308,41 +334,50 @@ td .who { font-weight: 500; }
       </div>
     </div>
     <div class="filters">
-      <div class="fgroup">
-        <span class="flabel">Dates</span>
-        <div class="seg" data-key="date">
-          <button data-v="month">This month</button>
-          <button data-v="lastmonth">Last month</button>
-          <button data-v="90">Last 90 days</button>
-          <button data-v="year">This year</button>
-          <button data-v="all">All time</button>
-          <button data-v="custom">Custom</button>
-        </div>
-        <span class="custom-dates" id="customDates" hidden>
-          <input type="date" id="dateFrom" aria-label="From date">
-          <span class="note">to</span>
-          <input type="date" id="dateTo" aria-label="To date">
+      <div class="field" id="peopleField">
+        <label class="flabel" for="peopleBtn">People</label>
+        <button class="select" id="peopleBtn" aria-haspopup="true" aria-expanded="false">Everyone</button>
+        <div class="popover" id="peoplePop" hidden></div>
+      </div>
+      <div class="field">
+        <label class="flabel" for="fView">View</label>
+        <select class="select" id="fView" data-key="view" title="Changes the Overview and Habits tabs">
+          <option value="all">Whole team</option><option value="sdr">SDR-led leads</option><option value="ae">AE-direct leads</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="flabel" for="fDate">Dates</label>
+        <select class="select" id="fDate" data-key="date">
+          <option value="month">This month</option><option value="lastmonth">Last month</option><option value="90">Last 90 days</option>
+          <option value="year">This year</option><option value="all">All time</option><option value="custom">Custom…</option>
+        </select>
+      </div>
+      <div class="field" id="customDates" hidden>
+        <label class="flabel" for="dateFrom">From – to</label>
+        <span class="custom-dates">
+          <input class="select" type="date" id="dateFrom" aria-label="From date">
+          <input class="select" type="date" id="dateTo" aria-label="To date">
         </span>
       </div>
-      <div class="fgroup">
-        <span class="flabel">Leads</span>
-        <div class="seg" data-key="b2b"><button data-v="true">B2B only</button><button data-v="false">All leads</button></div>
+      <div class="field">
+        <label class="flabel" for="fLeads">Leads</label>
+        <select class="select" id="fLeads" data-key="b2b"><option value="true">B2B only</option><option value="false">All leads</option></select>
       </div>
-      <div class="fgroup">
-        <span class="flabel">Desk</span>
-        <div class="seg" data-key="desk"><button data-v="all">All</button><button data-v="US">US</button><button data-v="OUS">OUS</button></div>
+      <div class="field">
+        <label class="flabel" for="fDesk">Desk</label>
+        <select class="select" id="fDesk" data-key="desk"><option value="all">All desks</option><option value="US">US</option><option value="OUS">OUS</option></select>
       </div>
-      <div class="fgroup">
-        <span class="flabel">Refunds</span>
-        <div class="seg" data-key="refunds"><button data-v="false">Leave out</button><button data-v="true">Include</button></div>
+      <div class="field">
+        <label class="flabel" for="fRefunds">Refunds</label>
+        <select class="select" id="fRefunds" data-key="refunds"><option value="false">Leave out</option><option value="true">Include</option></select>
       </div>
-      <div class="fgroup">
-        <span class="flabel">Repeat clients</span>
-        <div class="seg" data-key="repeat"><button data-v="true">Include</button><button data-v="false">Leave out</button></div>
+      <div class="field">
+        <label class="flabel" for="fRepeat">Repeat clients</label>
+        <select class="select" id="fRepeat" data-key="repeat"><option value="true">Include</option><option value="false">Leave out</option></select>
       </div>
-      <div class="fgroup">
-        <span class="flabel">Group by</span>
-        <div class="seg" data-key="group"><button data-v="week">Week</button><button data-v="month">Month</button></div>
+      <div class="field">
+        <label class="flabel" for="fGroup">Group by</label>
+        <select class="select" id="fGroup" data-key="group"><option value="month">Month</option><option value="week">Week</option></select>
       </div>
     </div>
   </div>
@@ -365,9 +400,6 @@ td .who { font-weight: 500; }
       <div>
         <h2>Top numbers</h2>
         <p id="ovRangeNote"></p>
-      </div>
-      <div class="seg" data-key="view">
-        <button data-v="all">Whole team</button><button data-v="sdr">SDRs</button><button data-v="ae">AEs</button>
       </div>
     </div>
     <div class="tiles" id="ovTiles"></div>
@@ -473,9 +505,6 @@ td .who { font-weight: 500; }
   <section class="tabpane" id="pane-habits" hidden>
     <div class="sechead">
       <div><h2>Habits</h2><p id="habitsNote">Calls from the Aircall export, matched to leads by phone number.</p></div>
-      <div class="seg" data-key="view">
-        <button data-v="all">Whole team</button><button data-v="sdr">SDRs</button><button data-v="ae">AEs</button>
-      </div>
     </div>
     <div class="banner" id="habitsBanner" hidden></div>
     <div class="tiles five" id="habitTiles"></div>
@@ -557,11 +586,13 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 const DEFAULTS = {
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", yoy: false, focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
+  sdrMetric: "md", aeMetric: "rev", habSdrMetric: "cov", habAeMetric: "cov", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
 if (!S.hidden || typeof S.hidden !== "object") S.hidden = { SDR: [], AE: [] };
 if (!S.expanded || typeof S.expanded !== "object") S.expanded = {};
+if (!Array.isArray(S.excluded)) S.excluded = [];
+const FORMER = "__former__"; // leads owned by people no longer on the team
 const SHOW_TABLE = { ov: false, sdr: false, ae: false };
 let LEADS = [], CALLS = [], META = { airtable: null, aircall: null };
 let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
@@ -833,8 +864,18 @@ function getRange() {
 const inR = (d, r) => d && d >= r.start && d < r.end;
 const isClosed = L => L.bucket === "closed" || (S.refunds && L.bucket === "refund");
 
+// People filter: unticked people's leads are removed from every number on the page.
+function peopleOK(L) {
+  if (!S.excluded.length) return true;
+  const ex = new Set(S.excluded);
+  if (ex.has(L.ae)) return false;
+  if (L.sdr && ex.has(L.sdr)) return false;
+  if (ex.has(FORMER) && !ROSTER_BY_NAME.has(L.ae)) return false;
+  return true;
+}
+const activePeople = list => list.filter(p => (S.desk === "all" || p.desk === S.desk) && !S.excluded.includes(p.name));
 function baseLeads() {
-  return LEADS.filter(L =>
+  return LEADS.filter(L => peopleOK(L) &&
     (!S.b2b || L.b2b) &&
     (S.desk === "all" || L.desk === S.desk) &&
     (S.repeat || !L.repeat));
@@ -1160,7 +1201,7 @@ function renderSDR(base, r) {
     tileHTML("l2d", a, p, r, { spark: sparkVals(leads, "l2d", r) }) +
     tileHTML("nr", a, p, r, { spark: sparkVals(leads, "nr", r) }) + leadsTile;
 
-  const people = SDRS.filter(s => S.desk === "all" || s.desk === S.desk);
+  const people = activePeople(SDRS);
   const rows = people.map(s => ({ s, a: accumulate(leads.filter(L => L.sdr === s.name), r) }));
   let html = `<table><thead><tr><th>SDR</th><th>Desk</th><th>Leads</th><th>Meeting Done %</th><th>Lead→Deal %</th><th>Non-Response %</th><th>AE-rejected %</th><th>Revenue</th><th>AOV</th></tr></thead><tbody>`;
   for (const { s, a: x } of rows) {
@@ -1219,7 +1260,7 @@ function renderAE(base, r) {
     tileHTML("md", aDir, pDir, r, { label: "Meeting Done % (direct)", spark: sparkVals(direct, "md", r) }) +
     tileHTML("l2d", aDir, pDir, r, { label: "Lead→Deal % (direct)", spark: sparkVals(direct, "l2d", r) });
 
-  const people = AES.filter(s => S.desk === "all" || s.desk === S.desk);
+  const people = activePeople(AES);
   const names = new Set(people.map(p => p.name));
 
   // Month-over-month chart: one line per AE + all AEs
@@ -1344,7 +1385,7 @@ function renderHabits(base, r) {
     const isSdr = role === "SDR", pre = isSdr ? "habSdr" : "habAe";
     $(pre + "Card").hidden = isSdr ? S.view === "ae" : S.view === "sdr";
     if ($(pre + "Card").hidden) return;
-    const people = (isSdr ? SDRS : AES).filter(s => S.desk === "all" || s.desk === S.desk);
+    const people = activePeople(isSdr ? SDRS : AES);
     const pick = (L, nm) => isSdr ? L.sdr === nm : (!L.sdr && L.ae === nm);
     const hk = S[isSdr ? "habSdrMetric" : "habAeMetric"], H = HAB_KEYS[hk];
     $(pre + "Title").textContent = `${isSdr ? "SDR" : "AE"} habits: ${H.label} by ${S.group}`;
@@ -1366,7 +1407,24 @@ function renderHabits(base, r) {
 
 /* ================= CONTROLS ================= */
 const BOOL_KEYS = new Set(["b2b", "refunds", "repeat", "yoy"]);
+function renderPeoplePop() {
+  const ex = new Set(S.excluded);
+  const opt = (p) => `<label class="opt"><input type="checkbox" data-person="${esc(p.name)}"${ex.has(p.name) ? "" : " checked"}><i style="background:${personColor(p)}"></i>${esc(p.name)}<small>${p.desk}</small></label>`;
+  $("peoplePop").innerHTML = `<div class="pophead"><b>Include these people</b><span><button class="linkbtn" data-people="all">All</button> · <button class="linkbtn" data-people="none">None</button></span></div>
+    <h5>SDRs</h5>${SDRS.map(opt).join("")}
+    <h5>AEs · US</h5>${AES.filter(a => a.desk === "US").map(opt).join("")}
+    <h5>AEs · OUS</h5>${AES.filter(a => a.desk === "OUS").map(opt).join("")}
+    <h5>Other</h5><label class="opt"><input type="checkbox" data-person="${FORMER}"${ex.has(FORMER) ? "" : " checked"}>Former team members<small>e.g. Mateo</small></label>
+    <p class="note" style="margin:10px 6px 2px">Unticking someone removes their leads and deals from every number, chart and table.</p>`;
+}
 function syncControls() {
+  document.querySelectorAll("select[data-key]").forEach(sel => { sel.value = String(S[sel.dataset.key]); });
+  $("fView").disabled = S.tab === "sdr" || S.tab === "ae";
+  const nEx = S.excluded.filter(n => n !== FORMER).length, total = ROSTER.length;
+  const btn = $("peopleBtn");
+  btn.textContent = !S.excluded.length ? "Everyone" : nEx === 0 ? "Everyone (no former staff)" : `${total - nEx} of ${total} people`;
+  btn.classList.toggle("filtered", S.excluded.length > 0);
+  if (!$("peoplePop").hidden) renderPeoplePop();
   document.querySelectorAll(".seg[data-key]").forEach(seg => {
     const k = seg.dataset.key;
     seg.querySelectorAll("button").forEach(b => {
@@ -1425,6 +1483,34 @@ document.addEventListener("click", e => {
   const aeRow = e.target.closest("tr[data-ae]");
   if (aeRow) { S.focusAE = S.focusAE === aeRow.dataset.ae ? null : aeRow.dataset.ae; render(); return; }
 });
+document.addEventListener("change", e => {
+  const sel = e.target.closest("select[data-key]");
+  if (sel) {
+    const k = sel.dataset.key; let v = sel.value;
+    if (BOOL_KEYS.has(k)) v = v === "true";
+    S[k] = v;
+    if (k === "date" && v === "custom" && !S.from) { const n = new Date(); S.from = ymd(new Date(n.getFullYear(), 0, 1)); S.to = ymd(n); }
+    savePrefs(); render(); return;
+  }
+  const cb = e.target.closest("input[data-person]");
+  if (cb) {
+    const ex = new Set(S.excluded);
+    cb.checked ? ex.delete(cb.dataset.person) : ex.add(cb.dataset.person);
+    S.excluded = [...ex]; savePrefs(); render();
+  }
+});
+$("peopleBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  const pop = $("peoplePop"), open = pop.hidden;
+  pop.hidden = !open; $("peopleBtn").setAttribute("aria-expanded", open);
+  if (open) renderPeoplePop();
+});
+document.addEventListener("click", e => {
+  const pb = e.target.closest("[data-people]");
+  if (pb) { S.excluded = pb.dataset.people === "all" ? [] : [...ROSTER.map(p => p.name), FORMER]; savePrefs(); render(); return; }
+  if (!$("peoplePop").hidden && !e.target.closest("#peopleField")) { $("peoplePop").hidden = true; $("peopleBtn").setAttribute("aria-expanded", "false"); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("peoplePop").hidden) { $("peoplePop").hidden = true; $("peopleBtn").focus(); } });
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr.person")) e.target.click(); });
 $("dateFrom").addEventListener("change", e => { S.from = e.target.value; savePrefs(); render(); });
 $("dateTo").addEventListener("change", e => { S.to = e.target.value; savePrefs(); render(); });

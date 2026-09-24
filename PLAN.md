@@ -16,6 +16,9 @@ Each has a view switch: **Whole team / SDRs / AEs**
 - AEs = AE-direct leads (`SDR Owner` empty)
 
 ## Switches (change every number)
+All filters are dropdowns in the top bar.
+- **People:** checkbox list of every SDR and AE (+ former team members). Unticked people's leads and deals are removed from every number, chart and table.
+- **View:** Whole team / SDR-led / AE-direct (Overview and Habits)
 - **Date range:** this month / last month / last 90 days / this year / all / custom
 - **Leads:** B2B only (default) / All leads
 - **Desk:** All / US / OUS
