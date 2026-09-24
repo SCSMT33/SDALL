@@ -19,7 +19,7 @@ Each has a view switch: **Whole team / SDRs / AEs**
 All filters are dropdowns in the top bar.
 - **People:** checkbox list of every SDR and AE (+ former team members). Unticked people's leads and deals are removed from every number, chart and table.
 - **View:** Whole team / SDR-led / AE-direct (Overview tab)
-- **Date range:** this month / last month / last 90 days / this year / all / custom / This year + projection / Next 12 months
+- **Date range:** this month / last month / last 90 days / this year / all / custom / This year + projection / Next 3, 6, 12 months
 - **Leads:** B2B only (default) / All leads
 - **Desk:** All / US / OUS
 - **Refunds:** leave out (default) / include
@@ -51,12 +51,17 @@ All filters are dropdowns in the top bar.
 
 (The separate Habits tab was removed; its content lives on the SDRs and AEs tabs.)
 
-## Projection method (Overview revenue)
-1. Seasonality: each month ÷ the centred 12-month average (removes growth), averaged per calendar month, shrunk toward 1 when few years exist (1 year = half strength).
-2. Run-rate: last 3 complete months, seasonality removed. Trend: slope of last 6 such months, capped ±5%/month, fading 20% per month ahead.
-3. Forecast = run-rate × (1 + faded trend) × seasonality. Done per chart split group (seasonality shared).
-4. Current month = actual so far + forecast × share of month left after the file's last lead.
-5. Accuracy = average miss predicting each of the last 6 complete months one month ahead; shown as ±%.
+## Projection method (Overview)
+Average of two simple methods (tested best on this data: ±13–16% vs ±15–18% for either alone):
+1. Run-rate: last 3 full months with seasonality removed, plus a trend (slope of last 6 months, capped ±5%/month, fading 20%/month), times seasonality. Seasonality = month ÷ centred 12-month average, shrunk toward 1 with few years (1 year = half strength).
+2. Last year: same month last year × growth of the last 6 full months vs a year earlier. The growth figure uses all leads (B2B tags incomplete before Sep 2025).
+- Done per chart split group. Current month = actual so far + forecast × share of month left.
+- Accuracy = average miss predicting 1–3 months ahead from each of the last 8 month-ends; shown as ±%.
+
+## Growth vs last year (Overview)
+- Summary: growth for the last 12 / 6 / 3 months (ending on the file's last day) vs the same period a year earlier, "speeding up / steady / slowing" (3-month vs 12-month, ±10 pts), plus projected growth for the next 3 or 6 months with a range.
+- Chart: last 24 full months, each month vs the same month last year + 3-month average; projected months in green (Projection: Off / 3 / 6 months).
+- Uses all leads (B2B tags are incomplete before Sep 2025); every other filter applies.
 
 ## Rules
 - Every % shows its count next to it, e.g. "22% (of 41)".

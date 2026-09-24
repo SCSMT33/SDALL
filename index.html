@@ -243,6 +243,15 @@ button.tile:hover { border-color: var(--axis); }
 .tile .proj { font-size: 12.5px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
 .tile .proj i { width: 8px; height: 8px; border-radius: 2px; background: var(--proj1); flex: none; }
 .tile .proj b { color: var(--ink); }
+.grstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+@media (max-width: 800px) { .grstats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.gstat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.gstat span { font-size: 12px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.gstat span i { width: 8px; height: 8px; border-radius: 2px; background: var(--proj1); }
+.gstat b { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.gstat small { font-size: 12px; color: var(--muted); }
+.gstat.proj { background: var(--proj-wash); border-color: transparent; }
+.grtrend { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-2); }
 .projnote { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--proj-wash); font-size: 13px; color: var(--ink-2); }
 .projnote ol { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 4px; }
 .projnote p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
@@ -367,7 +376,7 @@ td .who { font-weight: 500; }
         <select class="select" id="fDate" data-key="date">
           <option value="month">This month</option><option value="lastmonth">Last month</option><option value="90">Last 90 days</option>
           <option value="year">This year</option><option value="all">All time</option><option value="custom">Custom…</option>
-          <optgroup label="With projection"><option value="yearproj">This year + projection</option><option value="next12">Next 12 months</option></optgroup>
+          <optgroup label="With projection"><option value="yearproj">This year + projection</option><option value="next3">Next 3 months</option><option value="next6">Next 6 months</option><option value="next12">Next 12 months</option></optgroup>
         </select>
       </div>
       <div class="field" id="customDates" hidden>
@@ -442,6 +451,21 @@ td .who { font-weight: 500; }
       <div class="datatable" id="ovTable" hidden></div>
       <p class="note" id="ovProjHint" hidden style="margin-top:10px">Switch Group by to Month or Quarter to see the projection.</p>
       <div class="projnote" id="ovProj" hidden></div>
+    </div>
+    <div class="card">
+      <div class="cardhead">
+        <div><h3>Growth vs last year</h3><div class="sub" id="grSub"></div></div>
+        <div class="controls">
+          <span class="flabel">Projection</span>
+          <div class="seg" data-key="growthProj"><button data-v="0">Off</button><button data-v="3">3 months</button><button data-v="6">6 months</button></div>
+          <button class="linkbtn" data-toggle-table="gr">Show table</button>
+          <button class="linkbtn" data-expand="gr">Expand</button>
+        </div>
+      </div>
+      <div class="grstats" id="grStats"></div>
+      <div class="legend" id="grLegend"></div>
+      <div class="chartbox"><canvas id="grChart" aria-label="Revenue growth vs the same month last year"></canvas></div>
+      <div class="datatable" id="grTable" hidden></div>
     </div>
     <div class="grid2">
       <div class="card">
@@ -621,14 +645,14 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 const DEFAULTS = {
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
+  sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
 if (!S.hidden || typeof S.hidden !== "object") S.hidden = { SDR: [], AE: [] };
 if (!S.expanded || typeof S.expanded !== "object") S.expanded = {};
 if (!Array.isArray(S.excluded)) S.excluded = [];
 const FORMER = "__former__"; // leads owned by people no longer on the team
-const SHOW_TABLE = { ov: false, sdr: false, ae: false };
+const SHOW_TABLE = { ov: false, sdr: false, ae: false, gr: false };
 let LEADS = [], CALLS = [], META = { airtable: null, aircall: null };
 let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
 // Older history in the export only has closed deals. Percentages only count from the month every lead is present.
@@ -888,6 +912,8 @@ function getRange() {
       r = { start: f, end: new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1) }; break;
     }
     case "yearproj": r = { start: new Date(y, 0, 1), end: new Date(y + 1, 0, 1) }; break;
+    case "next3": r = { start: new Date(y, m, 1), end: new Date(y, m + 3, 1) }; break;
+    case "next6": r = { start: new Date(y, m, 1), end: new Date(y, m + 6, 1) }; break;
     case "next12": r = { start: new Date(y, m, 1), end: new Date(y + 1, m, 1) }; break;
     default: r = { start: new Date(y, 0, 1), end: tomorrow };
   }
@@ -895,7 +921,7 @@ function getRange() {
   else if (S.date === "year") r.prev = { start: new Date(y - 1, 0, 1), end: new Date(y - 1, m, d + 1) };
   else if (S.date === "month") r.prev = { start: new Date(y, m - 1, 1), end: new Date(y, m - 1, d + 1) };
   else if (S.date === "yearproj") r.prev = { start: new Date(y - 1, 0, 1), end: new Date(y, 0, 1) };
-  else if (S.date === "next12") r.prev = null;
+  else if (S.date === "next3" || S.date === "next6" || S.date === "next12") r.prev = null;
   else if (S.date !== "all") { const len = r.end - r.start; r.prev = { start: new Date(r.start - len), end: r.start }; }
   r.prevLabel = S.date === "year" || S.date === "yearproj" ? "last year" : S.date === "month" || S.date === "lastmonth" ? "last month" : "prev. period";
   return r;
@@ -913,9 +939,9 @@ function peopleOK(L) {
   return true;
 }
 const activePeople = list => list.filter(p => (S.desk === "all" || p.desk === S.desk) && !S.excluded.includes(p.name));
-function baseLeads() {
+function baseLeads(ignoreB2B) {
   return LEADS.filter(L => peopleOK(L) &&
-    (!S.b2b || L.b2b) &&
+    (ignoreB2B || !S.b2b || L.b2b) &&
     (S.desk === "all" || L.desk === S.desk) &&
     (S.repeat || !L.repeat));
 }
@@ -989,46 +1015,59 @@ function series(leads, buckets, splitFn) {
 }
 
 /* ================= PROJECTION =================
-   Revenue projection = recent run-rate × seasonality, with a trend that fades out.
-   1. Seasonality: each month's revenue ÷ the 12-month average centred on it (removes growth), averaged per calendar month.
-   2. Run-rate: last 3 complete months with seasonality removed. Trend: slope of the last 6 such months, capped ±5%/month.
-   3. Forecast month k = run-rate × (1 + trend × fading sum) × seasonality[k]. The trend fades by 20% each month ahead.
-   Worked out separately for each chart split group; seasonality is shared (from the total).
-   Accuracy = average miss when the same method predicted each of the last 6 complete months. */
+   Two simple methods, averaged 50/50 (combining simple forecasts is more accurate than either alone; it tested best on this data):
+   A. Run-rate × seasonality with a fading trend.
+      Seasonality = each month ÷ the 12-month average centred on it (removes growth), per calendar month,
+      shrunk toward 1 when there are few years (1 year = half strength). Run-rate = last 3 full months with seasonality removed.
+      Trend = slope of the last 6 such months (capped ±5%/month), fading 20% per month ahead.
+   B. Same month last year × growth over the last 6 full months vs the same 6 months a year earlier.
+      The growth figure uses all leads (B2B tags are incomplete before Sep 2025), with every other filter applied.
+   Each chart split group is projected on its own; seasonality is shared.
+   Accuracy = average miss of the blended method predicting 1–3 months ahead, from each of the last 8 month-ends. */
 const mKey = d => d.getFullYear() * 12 + d.getMonth();
 const keyDate = k => new Date(Math.floor(k / 12), k % 12, 1);
 const keyLabel = k => MON_SHORT[k % 12] + " " + String(Math.floor(k / 12)).slice(2);
-const PROJ_PHI = 0.8;
-function projection(leads, splitFn) {
-  if (!LEADS.length) return null;
-  const end = LEADS[LEADS.length - 1].created, cm = mKey(end), last = cm - 1;
-  const dim = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
-  const frac = Math.max(0, (dim - end.getDate()) / dim);
+const PROJ_PHI = 0.8, GROWTH_WINDOW = 6;
+function dataEndDate() { return LEADS.length ? LEADS[LEADS.length - 1].created : new Date(); }
+function monthlyRevenue(leads, splitFn, maxKey) {
   const seg = new Map(), tot = new Map();
   for (const L of leads) {
     if (!isClosed(L) || !L.closed) continue;
-    const k = mKey(L.closed); if (k > cm) continue;
+    const k = mKey(L.closed); if (k > maxKey) continue;
     const g = splitFn(L); if (g == null) continue;
     if (!seg.has(g)) seg.set(g, new Map());
     const m = seg.get(g); m.set(k, (m.get(k) || 0) + L.price); tot.set(k, (tot.get(k) || 0) + L.price);
   }
+  return { seg, tot };
+}
+function usableStart(tot, last) { // first month of usable history: older months with tiny totals are left out
   let recent = 0; for (let k = last - 11; k <= last; k++) recent += tot.get(k) || 0;
   recent /= 12; if (!recent) return null;
-  let start = last;  // first month of usable history (older months with tiny totals are left out)
+  let start = last;
   for (let k = last; k >= last - 120; k--) { if ((tot.get(k) || 0) >= 0.15 * recent) start = k; else break; }
-  if (last - start < 2) return null;
+  return start;
+}
+function projection(leads, splitFn, growthLeads) {
+  if (!LEADS.length) return null;
+  const end = dataEndDate(), cm = mKey(end), last = cm - 1;
+  const dim = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
+  const frac = Math.max(0, (dim - end.getDate()) / dim);
+  const { seg, tot } = monthlyRevenue(leads, splitFn, cm);
+  const G = monthlyRevenue(growthLeads || leads, splitFn, cm);
+  const start = usableStart(tot, last), gStart = usableStart(G.tot, last);
+  if (start == null || last - start < 2) return null;
+  // A. seasonality
   const ratios = Array.from({ length: 12 }, () => []);
   for (let k = start + 6; k <= last - 6; k++) {
     let sum = 0; for (let j = -6; j <= 6; j++) sum += (tot.get(k + j) || 0) * (Math.abs(j) === 6 ? 0.5 : 1);
     if (sum > 0) ratios[k % 12].push((tot.get(k) || 0) / (sum / 12));
   }
-  // Shrink toward 1 when there are few years to learn from: 1 year = half strength, 2 years = 2/3, 3 = 3/4...
   let S12 = ratios.map(r => r.length ? 1 + (r.reduce((a, b) => a + b, 0) / r.length - 1) * (r.length / (r.length + 1)) : 1).map(v => Math.min(1.5, Math.max(0.6, v)));
   const mean = S12.reduce((a, b) => a + b, 0) / 12; S12 = S12.map(v => v / mean);
   const seasonMonths = ratios.filter(r => r.length).length;
   const seasonYears = Math.max(0, ...ratios.map(r => r.length));
   const des = (m, k) => (m.get(k) || 0) / S12[k % 12];
-  const fit = (m, upto) => {
+  const fitA = (m, upto) => {
     const lv = [upto - 2, upto - 1, upto].filter(k => k >= start).map(k => des(m, k));
     if (!lv.length) return null;
     const level = lv.reduce((a, b) => a + b, 0) / lv.length;
@@ -1041,19 +1080,37 @@ function projection(leads, splitFn) {
     }
     return { level, g };
   };
-  const fcAt = (f, upto, k) => { if (!f) return 0; const h = k - (upto - 1); let damp = 0, p = 1; for (let i = 0; i < h; i++) { p *= PROJ_PHI; damp += p; } return Math.max(0, f.level * (1 + f.g * damp) * S12[k % 12]); };
-  const fits = new Map([...seg].map(([g, m]) => [g, fit(m, last)]));
-  const totFit = fit(tot, last);
+  const methodA = (f, upto, k) => { if (!f) return 0; const h = k - (upto - 1); let damp = 0, p = 1; for (let i = 0; i < h; i++) { p *= PROJ_PHI; damp += p; } return Math.max(0, f.level * (1 + f.g * damp) * S12[k % 12]); };
+  // B. last year × recent growth
+  const growthAt = (gm, upto) => {
+    if (!gm || gStart == null || upto - GROWTH_WINDOW + 1 - 12 < gStart) return null;
+    let now = 0, ly = 0;
+    for (let k = upto - GROWTH_WINDOW + 1; k <= upto; k++) { now += gm.get(k) || 0; ly += gm.get(k - 12) || 0; }
+    return ly > 0 && now > 0 ? now / ly : null;
+  };
+  const methodB = (m, growth, upto, k) => (growth == null || k - 12 < start || k - 12 > upto) ? null : (m.get(k - 12) || 0) * growth;
+  const blend = (m, gm, upto, k) => { const a = methodA(fitA(m, upto), upto, k), b = methodB(m, growthAt(gm, upto), upto, k); return b == null ? a : (a + b) / 2; };
+  // Accuracy: blended method, 1–3 months ahead, from each of the last 8 month-ends
   const errs = [];
-  for (let k = last - 5; k <= last; k++) {
-    if (k - 1 - start < 2) continue;
+  for (let o = last - 8; o < last; o++) for (let h = 1; h <= 3; h++) {
+    const k = o + h; if (k > last || o - start < 2) continue;
     const act = tot.get(k) || 0; if (!act) continue;
-    errs.push(Math.abs(fcAt(fit(tot, k - 1), k - 1, k) - act) / act);
+    errs.push(Math.abs(blend(tot, G.tot, o, k) - act) / act);
   }
   const mape = errs.length ? errs.reduce((a, b) => a + b, 0) / errs.length : null;
-  // Projected (not yet happened) revenue for month k: full forecast for future months, the unfinished share for the current month.
-  const projMonth = (g, k) => k < cm ? 0 : fcAt(fits.get(g), last, k) * (k === cm ? frac : 1);
-  return { cm, last, start, frac, end, S12, seasonMonths, seasonYears, fits, totFit, mape, projMonth, groups: [...seg.keys()] };
+  const fits = new Map([...seg].map(([g, m]) => [g, fitA(m, last)]));
+  const growths = new Map([...seg.keys()].map(g => [g, growthAt(G.seg.get(g), last)]));
+  const full = new Map();  // cache of full-month forecasts per group
+  const fullMonth = (g, k) => {
+    const key = g + "|" + k; if (full.has(key)) return full.get(key);
+    const m = seg.get(g); if (!m) return 0;
+    const a = methodA(fits.get(g), last, k), b = methodB(m, growths.get(g), last, k);
+    const v = b == null ? a : (a + b) / 2; full.set(key, v); return v;
+  };
+  // Projected (not yet happened) revenue for month k: full forecast for future months, the unfinished share of the current month.
+  const projMonth = (g, k) => k < cm ? 0 : fullMonth(g, k) * (k === cm ? frac : 1);
+  const totFit = fitA(tot, last), totGrowth = growthAt(G.tot, last);
+  return { cm, last, start, frac, end, S12, seasonMonths, seasonYears, fits, totFit, totGrowth, growths, mape, projMonth, groups: [...seg.keys()], actualTot: tot };
 }
 function projectedIn(P, g, from, to) { // months with start in [from, to)
   let t = 0; for (let k = Math.max(P.cm, mKey(from)); keyDate(k) < to; k++) t += P.projMonth(g, k); return t;
@@ -1062,20 +1119,19 @@ function projectionExplainer(P, splitLabel) {
   const pm = (v) => money(v, true);
   const lvl = [...P.fits.values()].reduce((t, f) => t + (f ? f.level : 0), 0);
   const g = P.totFit ? P.totFit.g : 0;
-  const parts = P.fits.size > 1 ? " (" + [...P.fits].map(([n, f]) => `${n} ${pm(f ? f.level : 0)}`).join(" · ") + ")" : "";
   const idx = P.S12.map((v, i) => [i, v]).sort((a, b) => b[1] - a[1]);
   const season = P.seasonMonths >= 6
-    ? `Busiest: ${MON_SHORT[idx[0][0]]} ${idx[0][1].toFixed(2)}×, ${MON_SHORT[idx[1][0]]} ${idx[1][1].toFixed(2)}×. Quietest: ${MON_SHORT[idx[11][0]]} ${idx[11][1].toFixed(2)}×, ${MON_SHORT[idx[10][0]]} ${idx[10][1].toFixed(2)}×.`
-    : "Not enough history yet to measure seasonality, so every month is treated the same.";
-  return `<b>How the projection works</b>
+    ? `Busiest: ${MON_SHORT[idx[0][0]]} ${idx[0][1].toFixed(2)}×, ${MON_SHORT[idx[1][0]]} ${idx[1][1].toFixed(2)}×. Quietest: ${MON_SHORT[idx[11][0]]} ${idx[11][1].toFixed(2)}×, ${MON_SHORT[idx[10][0]]} ${idx[10][1].toFixed(2)}×${P.seasonYears === 1 ? " (half strength: only one year of history so far)" : ""}.`
+    : "not enough history yet, so every month counts the same.";
+  const gr = P.totGrowth != null ? `${P.totGrowth >= 1 ? "+" : ""}${Math.round((P.totGrowth - 1) * 100)}%` : null;
+  return `<b>How the projection works</b> <span>· average of two methods</span>
     <ol>
-      <li><b>Run-rate:</b> average revenue per month for ${keyLabel(P.last - 2)}–${keyLabel(P.last)}, with seasonal ups and downs taken out: <b>${pm(lvl)}/month</b>${esc(parts)}.${P.fits.size > 1 ? ` Each ${esc(splitLabel)} group is projected on its own, so a group that is growing faster keeps growing faster.` : ""}</li>
-      <li><b>Trend:</b> over the last 6 months revenue moved about <b>${g >= 0 ? "+" : ""}${(g * 100).toFixed(1)}% a month</b>. The projection keeps that trend but fades it out month by month, so it doesn't run away.</li>
-      <li><b>Seasonality:</b> each month is scaled by how it compares with a normal month, measured on ${keyLabel(P.start)}–${keyLabel(P.last)} history with growth removed${P.seasonYears === 1 ? ", at half strength because there's only one year of history so far" : ""}. ${season}</li>
-      <li><b>This month (${MON_SHORT[P.cm % 12]}):</b> actual so far, plus the projection for the ${Math.round(P.frac * 100)}% of the month left after the last lead in your file (${fmtDate(P.end)}).</li>
-      <li><b>Accuracy:</b> ${P.mape != null ? `when this method predicted each of the last 6 finished months, it was off by <b>±${Math.round(P.mape * 100)}%</b> on average. Read projections as a range.` : "not enough history to test yet."}</li>
+      <li><b>Run-rate method:</b> ${keyLabel(P.last - 2)}–${keyLabel(P.last)} average with seasonality removed, <b>${pm(lvl)}/month</b>, plus the recent trend (<b>${g >= 0 ? "+" : ""}${(g * 100).toFixed(1)}%/month</b>, fading out month by month), times each month's seasonality. ${season}</li>
+      <li><b>Last-year method:</b> the same month last year × growth over the last ${GROWTH_WINDOW} full months vs a year earlier${gr ? ` (<b>${gr}</b>)` : " (needs more history, so only method 1 is used)"}.</li>
+      <li><b>This month (${MON_SHORT[P.cm % 12]}):</b> actual so far + the projection for the ${Math.round(P.frac * 100)}% of the month left after the last lead in your file (${fmtDate(P.end)}).</li>
+      <li><b>Accuracy:</b> ${P.mape != null ? `tested on the last 8 month-ends, predicting 1–3 months ahead, it missed by <b>±${Math.round(P.mape * 100)}%</b> on average. Read projections as a range.` : "not enough history to test yet."}</li>
     </ol>
-    <p>Every filter at the top applies. The projection only uses deals that match them.</p>`;
+    <p>${P.fits.size > 1 ? `Each ${esc(splitLabel)} group is projected on its own. ` : ""}Every filter at the top applies. The growth figure in method 2 uses all leads, because B2B tags in the export are incomplete before Sep 2025.</p>`;
 }
 
 /* ================= RENDER: shared pieces ================= */
@@ -1116,7 +1172,7 @@ function tileHTML(k, a, prev, r, opts = {}) {
     <div class="tl">${esc(opts.label || m.label)}<em>${tag}</em></div>
     <div class="tv"${small ? ' style="color:var(--muted)" title="Small sample"' : ""}>${fmtMetric(k, v)}</div>
     <div class="tc">${m.cap(a)}${small ? " · small sample" : ""}</div>${opts.extra || ""}
-    <div class="trow">${r.prev ? deltaHTML(k, v, prev ? m.val(prev) : null, r.prevLabel) : `<span class="delta flat">All time</span>`}${opts.spark ? sparkSVG(opts.spark) : ""}</div>
+    <div class="trow">${r.prev ? deltaHTML(k, v, prev ? m.val(prev) : null, r.prevLabel) : `<span class="delta flat">${S.date === "all" ? "All time" : "No comparison"}</span>`}${opts.spark ? sparkSVG(opts.spark) : ""}</div>
   </${el}>`;
 }
 function cellPct(num, den) {
@@ -1273,12 +1329,13 @@ function renderOverview(base, r) {
   const a = accumulate(leads, r), p = r.prev ? accumulate(leads, r.prev) : null;
   // Projection is shown when the date range reaches today or later.
   const today0 = new Date(); today0.setHours(0, 0, 0, 0);
-  const PT = r.end > today0 ? projection(leads, () => "All") : null;
+  const growthLeads = viewFilter(baseLeads(true), S.view);  // all filters except B2B-only
+  const PT = r.end > today0 ? projection(leads, () => "All", growthLeads) : null;
   let revExtra = "";
   if (PT) {
     const projTo = S.date === "month" || S.date === "year" || S.date === "90" || S.date === "all" ? keyDate(mKey(new Date(r.end - 1)) + 1) : r.end;
     const pr = projectedIn(PT, "All", r.start, projTo);
-    const lbl = { month: "this month", yearproj: `for ${r.start.getFullYear()}`, next12: "next 12 months" }[S.date] || `through ${fmtDate(new Date(projTo - 86400e3))}`;
+    const lbl = { month: "this month", yearproj: `for ${r.start.getFullYear()}`, next3: "next 3 months", next6: "next 6 months", next12: "next 12 months" }[S.date] || `through ${fmtDate(new Date(projTo - 86400e3))}`;
     if (pr > 0) revExtra = `<div class="proj" title="Actual so far + projected. See the chart for how it's calculated."><i></i>Projected ${lbl}: <b>${money(a.rev + pr, true)}</b>${PT.mape != null ? ` ±${Math.round(PT.mape * 100)}%` : ""}</div>`;
   }
   $("ovTiles").innerHTML = ["rev", "aov", "l2d", "md"].map(k => tileHTML(k, a, p, r, { selectable: true, sel: S.kpi === k, spark: sparkVals(leads, k, r), extra: k === "rev" ? revExtra : "" })).join("");
@@ -1303,7 +1360,7 @@ function renderOverview(base, r) {
   // Projected revenue (green), stacked on top of actuals, for the current and future months.
   let P = null;
   if (isRev && S.group !== "week" && r.end > today0) {
-    P = projection(leads, splitFns[S.split]);
+    P = projection(leads, splitFns[S.split], growthLeads);
     if (P) {
       const greens = [cssVar("--proj1"), cssVar("--proj2")];
       order.filter(o => P.groups.includes(o)).forEach((o, i) => {
@@ -1315,6 +1372,7 @@ function renderOverview(base, r) {
   $("ovProj").hidden = !(P && datasets.some(d => d.projected));
   if (!$("ovProj").hidden) $("ovProj").innerHTML = projectionExplainer(P, { none: "", role: "SDR-led / AE-direct", desk: "desk", repeat: "new / repeat" }[S.split]);
   $("ovProjHint").hidden = !(isRev && S.group === "week" && r.end > today0);
+  renderGrowth(growthLeads);
 
   // Last-year bars: revenue by month or quarter. Same filters, same split, 12 months earlier, drawn faded to the left.
   const showYoy = isRev && S.group !== "week";
@@ -1375,6 +1433,66 @@ function renderOverview(base, r) {
     : "Load the Aircall file to add a “Called” step.";
   $("ovLost").innerHTML = hbarsHTML(topReasons(cohort, "lost"), null, { neutral: true, noPct: true });
   $("ovDq").innerHTML = hbarsHTML(topReasons(cohort, "dq"), null, { neutral: true, noPct: true });
+}
+
+/* ---------- Growth vs last year (Overview) ---------- */
+const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+function revenueBetween(leads, a, b) { let t = 0; for (const L of leads) if (isClosed(L) && L.closed >= a && L.closed < b) t += L.price; return t; }
+const fmtGrowth = g => g == null || !isFinite(g) ? "—" : (g >= 0 ? "+" : "") + Math.round(g * 100) + "%";
+function renderGrowth(growthLeads) {
+  const end = dataEndDate(), endX = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1);
+  $("grSub").textContent = `Revenue vs the same period a year earlier, by close date. Last 24 months, whatever the date range. ` +
+    (S.b2b ? "Uses all leads, because B2B tags in the export are incomplete before Sep 2025 and would overstate B2B growth. Every other filter applies." : "Every filter applies.");
+  // Summary: trailing windows ending on the last day in the file
+  const win = n => { const a = addMonths(endX, -n); const now = revenueBetween(growthLeads, a, endX), ly = revenueBetween(growthLeads, addMonths(a, -12), addMonths(endX, -12)); return { now, ly, g: ly > 0 ? now / ly - 1 : null }; };
+  const w12 = win(12), w6 = win(6), w3 = win(3);
+  const H = +S.growthProj || 0;
+  const P = projection(growthLeads, () => "All", growthLeads);
+  const rev = monthlyRevenue(growthLeads, () => "All", P ? P.cm : mKey(end)).tot;
+  const cm = mKey(end);
+  const projRev = k => (k === cm ? (rev.get(cm) || 0) : 0) + (P ? P.projMonth("All", k) : 0);
+  let projStat = "";
+  if (H && P) {
+    let now = 0, ly = 0; for (let k = cm; k < cm + H; k++) { now += projRev(k); ly += rev.get(k - 12) || 0; }
+    const g = ly > 0 ? now / ly - 1 : null, e = P.mape || 0;
+    projStat = `<div class="gstat proj"><span><i></i>Next ${H} months (projected)</span><b>${fmtGrowth(g)}</b><small>${money(now, true)} vs ${money(ly, true)}${g != null && e ? ` · range ${fmtGrowth((now * (1 - e)) / ly - 1)} to ${fmtGrowth((now * (1 + e)) / ly - 1)}` : ""}</small></div>`;
+  }
+  const stat = (lbl, w) => `<div class="gstat"><span>${lbl}</span><b>${fmtGrowth(w.g)}</b><small>${money(w.now, true)} vs ${money(w.ly, true)}</small></div>`;
+  let trend = "";
+  if (w3.g != null && w12.g != null) {
+    const d = (w3.g - w12.g) * 100;
+    trend = `<div class="grtrend">As of ${fmtDate(end)}. Last 3 months are ${Math.abs(Math.round(d))} pts ${d >= 0 ? "above" : "below"} the 12-month rate: <b>${d > 10 ? "growth is speeding up" : d < -10 ? "growth is slowing down" : "growth is holding steady"}</b>.</div>`;
+  }
+  $("grStats").innerHTML = stat("Last 12 months", w12) + stat("Last 6 months", w6) + stat("Last 3 months", w3) + projStat + trend;
+
+  // Chart: 24 full months + current and projected months
+  const keys = []; for (let k = cm - 24; k < cm + (H && P ? H : 0); k++) keys.push(k);
+  const valOf = k => k < cm ? (rev.get(k) || 0) : projRev(k);
+  const info = keys.map(k => { const cur = valOf(k), ly = rev.get(k - 12) || 0; return { k, cur, ly, g: ly > 0 && cur > 0 ? cur / ly - 1 : null, proj: k >= cm }; });
+  const roll = info.map((x, i) => { if (i < 2) return null; const a = info.slice(i - 2, i + 1); const c = a.reduce((t, y) => t + y.cur, 0), l = a.reduce((t, y) => t + y.ly, 0); return l > 0 && c > 0 ? c / l - 1 : null; });
+  const firstProj = info.findIndex(x => x.proj);
+  const e = P && P.mape ? P.mape : 0;
+  const bar = (proj) => ({ type: "bar", data: info.map(x => x.proj === proj ? x.g : null), info, backgroundColor: proj ? cssVar("--proj2") : cssVar("--s1"), borderRadius: 4, borderSkipped: "start", maxBarThickness: 24, order: 2, grouped: false });
+  const datasets = [Object.assign(bar(false), { label: "Each month vs last year" })];
+  datasets.push({ type: "line", label: "3-month average", data: roll.map((v, i) => firstProj >= 0 && i >= firstProj ? null : v), borderColor: cssVar("--ink"), backgroundColor: cssVar("--ink"), borderWidth: 2.5, pointRadius: 2.5, pointHoverRadius: 5, tension: 0.15, spanGaps: true, order: 1 });
+  if (firstProj >= 0) {
+    datasets.push(Object.assign(bar(true), { label: "Projected month", projected: true }));
+    datasets.push({ type: "line", label: "3-month average · projected", data: roll.map((v, i) => i >= firstProj - 1 ? v : null), borderColor: cssVar("--proj1"), backgroundColor: cssVar("--proj1"), borderWidth: 2.5, pointRadius: 2.5, pointHoverRadius: 5, tension: 0.15, spanGaps: true, order: 1, projected: true });
+  }
+  const labels = keys.map(keyLabel);
+  $("grLegend").innerHTML = legendHTML(datasets.map(d => ({ label: d.label, color: d.type === "bar" ? d.backgroundColor : d.borderColor })));
+  destroy("gr");
+  const opts = baseOpts(v => fmtGrowth(v));
+  opts.scales.x.stacked = true;
+  opts.plugins.tooltip.callbacks.label = c => {
+    const x = info[c.dataIndex];
+    if (c.dataset.type === "line") return ` ${c.dataset.label}: ${fmtGrowth(c.raw)}`;
+    const rng = x.proj && e && x.ly ? ` (range ${fmtGrowth((x.cur * (1 - e)) / x.ly - 1)} to ${fmtGrowth((x.cur * (1 + e)) / x.ly - 1)})` : "";
+    return ` ${x.proj ? "Projected: " : ""}${fmtGrowth(c.raw)}${rng} · ${money(x.cur, true)} vs ${money(x.ly, true)} last year`;
+  };
+  CHARTS.gr = new Chart($("grChart"), { type: "bar", data: { labels, datasets }, options: opts });
+  $("grTable").hidden = !SHOW_TABLE.gr;
+  if (SHOW_TABLE.gr) $("grTable").innerHTML = `<table><thead><tr><th>Month</th><th>Revenue</th><th>Same month last year</th><th>Growth</th><th>3-month average</th></tr></thead><tbody>${info.map((x, i) => `<tr><td>${keyLabel(x.k)}${x.proj ? " (projected)" : ""}</td><td>${money(x.cur)}</td><td>${money(x.ly)}</td><td>${fmtGrowth(x.g)}</td><td>${fmtGrowth(roll[i])}</td></tr>`).join("")}</tbody></table>`;
 }
 
 /* ---------- SDRs ---------- */
