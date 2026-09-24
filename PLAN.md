@@ -52,7 +52,7 @@ Each has a view switch: **Whole team / SDRs / AEs**
 - Meeting = "Meeting Done" only.
 - SDR-led revenue shows for both the SDR and the AE, counted once in totals.
 - People who left (e.g. Mateo Pautasso) count in totals, hidden from people tables.
-- `Price AED` is actually USD. No conversion.
+- `Price AED` is in the deal's own currency (`Currency` column). Converted to USD with a fixed, editable rate table (`FX_RATES` in index.html).
 - Airtable times are UTC+3; Aircall is UTC. Subtract 3h before joining.
 - Calls join to leads on the last 9 digits of the phone number.
 - SDR vs AE calls are told apart by the Aircall `user` name.

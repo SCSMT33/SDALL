@@ -263,6 +263,9 @@ td .who { font-weight: 500; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .datatable { margin-top: 12px; max-height: 320px; overflow: auto; }
 .datatable table td, .datatable table th { padding: 5px 8px; font-size: 12.5px; }
+.fxnote { margin-top: 24px; font-size: 12.5px; color: var(--muted); }
+.fxnote summary { cursor: pointer; }
+.fxnote div { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -465,6 +468,10 @@ td .who { font-weight: 500; }
       <div class="chartbox short"><canvas id="habitChart" aria-label="Median time to first call per person"></canvas></div>
     </div>
   </section>
+  <details class="fxnote" id="fxNote" hidden>
+    <summary>All money is in USD. Deals in other currencies are converted at fixed rates.</summary>
+    <div id="fxBody"></div>
+  </details>
 </main>
 
 <div class="dropveil" id="dropVeil" hidden><div>Drop the Airtable and/or Aircall CSV</div></div>
@@ -491,6 +498,13 @@ const ROSTER = [
 ];
 // Different spellings of the same person (lowercase key -> roster name).
 const ALIASES = { "mark santos": "Mark Paolo Santos" };
+// Prices in the Airtable export are in each deal's own currency (the "Currency" column).
+// Every price is converted to USD with these fixed rates: 1 unit of currency = X USD. Edit to update.
+// AED, SAR, QAR, BHD are pegged to the dollar; the others are approximate.
+const FX_RATES = {
+  USD: 1, EUR: 1.10, GBP: 1.30, CAD: 0.73, AUD: 0.66, NZD: 0.60, SGD: 0.75,
+  AED: 0.2723, SAR: 0.2667, QAR: 0.2747, BHD: 2.6596, KWD: 3.26, SEK: 0.095, ZAR: 0.055,
+};
 const AIRTABLE_TZ_OFFSET_H = 3;      // Airtable times are UTC+3, Aircall is UTC
 const CALL_LOOKAHEAD_DAYS = 14;      // calls counted for a lead up to this many days after it came in
 const SMALL_SAMPLE = 20;             // fewer leads than this = greyed "small sample"
@@ -510,6 +524,7 @@ let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
 // Older history in the export only has closed deals. Percentages only count from the month every lead is present.
 let FULL_START = null;
 let REPEAT_SOURCE = "";
+let UNKNOWN_FX = new Set();
 const CHARTS = {};
 const ROSTER_BY_NAME = new Map(ROSTER.map(p => [p.name, p]));
 const SDRS = ROSTER.filter(p => p.role === "SDR");
@@ -619,6 +634,7 @@ function findCustomerTag(keys) {
 }
 function buildLeads(rows) {
   const out = [];
+  UNKNOWN_FX = new Set();
   const tag = rows.length ? findCustomerTag(Object.keys(rows[0])) : null;
   REPEAT_SOURCE = tag ? `the “${tag.col}” column` : "email match (same email had an earlier closed deal)";
   for (const r of rows) {
@@ -635,7 +651,11 @@ function buildLeads(rows) {
     if (ROSTER_BY_NAME.has(ae)) desk = ROSTER_BY_NAME.get(ae).desk;
     else if (ROSTER_BY_NAME.has(sdr)) desk = ROSTER_BY_NAME.get(sdr).desk;
     else desk = region === "NA" ? "US" : "OUS";
-    const price = parseFloat(String(r["Price AED"] || "").replace(/[^0-9.\-]/g, "")) || 0; // USD despite the label
+    const rawPrice = parseFloat(String(r["Price AED"] || "").replace(/[^0-9.\-]/g, "")) || 0; // deal's own currency, despite the label
+    const cur = String(r["Currency"] || "").trim().toUpperCase() || "USD";
+    let rate = FX_RATES[cur];
+    if (rate == null) { rate = 1; if (rawPrice) UNKNOWN_FX.add(cur); }
+    const price = rawPrice * rate;
     let closed = parseLongDate(r["Closed date"]);
     const isClosedStatus = status === "closed";
     const isRefund = REFUND_STATUSES.includes(status);
@@ -942,7 +962,10 @@ function render() {
   $("emptyState").hidden = has;
   for (const t of ["overview", "sdr", "ae", "habits"]) $("pane-" + t).hidden = !has || S.tab !== t;
   renderStatus();
+  $("fxNote").hidden = !has;
   if (!has) return;
+  $("fxBody").innerHTML = Object.entries(FX_RATES).filter(([c]) => c !== "USD").map(([c, v]) => `<span>1 ${c} = $${v}</span>`).join("") +
+    (UNKNOWN_FX.size ? `<span style="color:var(--bad)">No rate for ${esc([...UNKNOWN_FX].join(", "))}. Counted as USD until a rate is added.</span>` : "");
   const r = getRange();
   const base = baseLeads();
   if (S.tab === "overview") renderOverview(base, r);

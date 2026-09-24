@@ -9,5 +9,8 @@ Sales dashboard for the Shootday SDR and AE teams. See `PLAN.md` for what it tra
 
 The files are read in your browser only and never uploaded. The page remembers the last files you loaded.
 
+## Exchange rates
+Prices are converted to USD with the `FX_RATES` list near the top of the `<script>`. Edit it to update rates.
+
 ## Change the team
 Edit the `ROSTER` list near the top of the `<script>` in `index.html`.
