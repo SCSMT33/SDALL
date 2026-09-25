@@ -71,6 +71,7 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - Uses all leads (B2B tags are incomplete before Sep 2025); every other filter applies.
 
 ## Rules
+- Duplicate records (DQ reason "Duplicate record") and spam/test submissions (MQL DQ reason Spam/Test) are not leads: left out of every count.
 - Every % shows its count next to it, e.g. "22% (of 41)".
 - Revenue and AOV use the **close date**. Percentages use the **lead creation date**.
 - Meeting = "Meeting Done" only.

@@ -719,6 +719,7 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 
 /* ================= STATE ================= */
 const DEFAULTS = {
+  prefsVersion: 2,
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
   sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
@@ -741,7 +742,11 @@ const SDRS = ROSTER.filter(p => p.role === "SDR");
 const AES = ROSTER.filter(p => p.role === "AE");
 
 function loadPrefs() {
-  try { const p = JSON.parse(localStorage.getItem("sdall-prefs") || "{}"); delete p.focusSDR; delete p.focusAE; return p; }
+  try {
+    const p = JSON.parse(localStorage.getItem("sdall-prefs") || "{}"); delete p.focusSDR; delete p.focusAE;
+    if (p.prefsVersion !== 2) { p.refunds = false; p.prefsVersion = 2; } // one-time reset: refunds left out, like the in-house report
+    return p;
+  }
   catch (e) { return {}; }
 }
 function savePrefs() { try { localStorage.setItem("sdall-prefs", JSON.stringify(S)); } catch (e) {} }
@@ -883,6 +888,8 @@ function buildLeads(rows) {
       md: String(r["Meeting Status"] || "").trim().toLowerCase() === "meeting done",
       aeRejected: status.startsWith("disqualified ae"),
       dqReason, lostReason,
+      // Not real leads: duplicates and spam/test submissions. Left out of every count (the in-house report does the same).
+      junk: !isClosedStatus && !isRefund && (reasonKey(dqReason) === "duplicaterecord" || ["spam", "test"].includes(String(r["MQL Disqualification Reason"] || "").trim().toLowerCase())),
       email: String(r["Email"] || "").trim().toLowerCase(),
       ph: phone9(r["Phone"]),
       repeat: tag ? tag.isRepeat(r[tag.col]) : false, calls: null,
@@ -1016,7 +1023,7 @@ function peopleOK(L) {
 }
 const activePeople = list => list.filter(p => (S.desk === "all" || p.desk === S.desk) && !S.excluded.includes(p.name));
 function baseLeads(ignoreB2B) {
-  return LEADS.filter(L => peopleOK(L) &&
+  return LEADS.filter(L => !L.junk && peopleOK(L) &&
     (ignoreB2B || !S.b2b || L.b2b) &&
     (S.desk === "all" || L.desk === S.desk) &&
     (S.repeat || !L.repeat));
