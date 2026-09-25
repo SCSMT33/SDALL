@@ -83,7 +83,7 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - SDR vs AE calls are told apart by the Aircall `user` name.
 
 ## Repeat clients
-- Uses a "new customer" style column if the Airtable export has one (auto-detected).
+- Uses the "New deal" column (or any "new customer" style column) for closed deals: unchecked = repeat. Open leads use the email match.
 - Otherwise: repeat = the same email already had an earlier closed deal.
 - Revenue tile shows the share of revenue from repeat clients.
 

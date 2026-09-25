@@ -841,7 +841,7 @@ function ingest(kind, text, name, at) {
 function findCustomerTag(keys) {
   for (const k of keys) {
     const n = k.toLowerCase().replace(/[^a-z]/g, "");
-    if (/newcustomer|newclient|isnew|firsttimecustomer/.test(n)) return { col: k, isRepeat: v => !/^(checked|yes|true|1|new)/i.test(String(v).trim()) };
+    if (/newcustomer|newclient|newdeal|isnew|firsttimecustomer/.test(n)) return { col: k, isRepeat: v => !/^(checked|yes|true|1|new)/i.test(String(v).trim()) };
     if (/returning|repeat|existingcustomer|existingclient/.test(n)) return { col: k, isRepeat: v => /^(checked|yes|true|1|returning|repeat|existing)/i.test(String(v).trim()) };
     if (/customertype|clienttype|customerstatus|clientstatus/.test(n)) return { col: k, isRepeat: v => /return|repeat|exist|recurr/i.test(String(v)) };
   }
@@ -851,7 +851,7 @@ function buildLeads(rows) {
   const out = [];
   UNKNOWN_FX = new Set();
   const tag = rows.length ? findCustomerTag(Object.keys(rows[0])) : null;
-  REPEAT_SOURCE = tag ? `the “${tag.col}” column` : "email match (same email had an earlier closed deal)";
+  REPEAT_SOURCE = tag ? `the “${tag.col}” column for deals (email match for open leads)` : "email match (same email had an earlier closed deal)";
   for (const r of rows) {
     const created = parseISOish(r["Creation Date"]);
     if (!created) continue;
@@ -871,7 +871,7 @@ function buildLeads(rows) {
     let closed = parseLongDate(r["Closed date"]);
     const isClosedStatus = status === "closed";
     const isRefund = REFUND_STATUSES.includes(status);
-    if ((isClosedStatus || isRefund) && !closed) closed = created;
+    // Deals with no closed date can't be placed by close date, so they stay out of revenue (the in-house report does the same).
     let rate = fxRate(cur, (isClosedStatus || isRefund) ? closed : created);
     if (rate == null) { rate = 1; if (rawPrice) UNKNOWN_FX.add(cur); }
     const price = rawPrice * rate;
@@ -892,17 +892,20 @@ function buildLeads(rows) {
       junk: !isClosedStatus && !isRefund && (reasonKey(dqReason) === "duplicaterecord" || ["spam", "test"].includes(String(r["MQL Disqualification Reason"] || "").trim().toLowerCase())),
       email: String(r["Email"] || "").trim().toLowerCase(),
       ph: phone9(r["Phone"]),
-      repeat: tag ? tag.isRepeat(r[tag.col]) : false, calls: null,
+      // The tag only describes deals; leads that haven't closed fall back to the email match below.
+      repeat: false, tagRepeat: tag && (isClosedStatus || isRefund) ? tag.isRepeat(r[tag.col]) : null, calls: null,
     });
   }
   // No tag column: repeat client = same email already had an earlier closed lead.
   out.sort((a, b) => a.created - b.created);
   const firstClose = new Map();
-  if (!tag) for (const L of out) {
-    if (!L.email) continue;
-    const fc = firstClose.get(L.email);
-    if (fc != null && fc < L.created) L.repeat = true;
-    if ((L.bucket === "closed" || L.bucket === "refund") && fc == null) firstClose.set(L.email, L.created);
+  for (const L of out) {
+    if (L.email) {
+      const fc = firstClose.get(L.email);
+      if (fc != null && fc < L.created) L.repeat = true;
+      if ((L.bucket === "closed" || L.bucket === "refund") && fc == null) firstClose.set(L.email, L.created);
+    }
+    if (L.tagRepeat != null) L.repeat = L.tagRepeat;
   }
   // First month where at least 30% of leads are not closed = the export has every lead from there on.
   const byMonth = new Map();
