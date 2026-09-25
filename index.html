@@ -607,7 +607,7 @@ td .who { font-weight: 500; }
   </section>
 
   <details class="fxnote" id="fxNote" hidden>
-    <summary>All money is in USD. Deals in other currencies are converted at fixed rates.</summary>
+    <summary>All money is in USD. Deals in other currencies are converted at the ECB monthly average rate for the month they closed.</summary>
     <div id="fxBody"></div>
   </details>
 </main>
@@ -637,12 +637,80 @@ const ROSTER = [
 // Different spellings of the same person (lowercase key -> roster name).
 const ALIASES = { "mark santos": "Mark Paolo Santos" };
 // Prices in the Airtable export are in each deal's own currency (the "Currency" column).
-// Every price is converted to USD with these fixed rates: 1 unit of currency = X USD. Edit to update.
-// AED, SAR, QAR, BHD are pegged to the dollar; the others are approximate.
-const FX_RATES = {
-  USD: 1, EUR: 1.10, GBP: 1.30, CAD: 0.73, AUD: 0.66, NZD: 0.60, SGD: 0.75,
-  AED: 0.2723, SAR: 0.2667, QAR: 0.2747, BHD: 2.6596, KWD: 3.26, SEK: 0.095, ZAR: 0.055,
+// Each price is converted to USD at the ECB monthly average rate for the month the deal closed
+// (open leads: the month they came in). Currencies pegged to the dollar use their fixed peg.
+// FX_MONTHLY = USD per 1 unit, monthly averages of ECB reference rates (source: frankfurter.app), Dec 2021 – Sep 2026.
+// Months after the table use the latest month in it. To extend it, add months in the same format.
+const FX_PEGGED = { USD: 1, AED: 0.2723, SAR: 0.2667, QAR: 0.2747, BHD: 2.6596, KWD: 3.26 };
+const FX_MONTHLY = {
+  "2021-12": { AUD: 0.7163, CAD: 0.7816, EUR: 1.1304, GBP: 1.3319, NZD: 0.679, SEK: 0.11, SGD: 0.7339, ZAR: 0.063 },
+  "2022-01": { AUD: 0.7175, CAD: 0.7922, EUR: 1.1314, GBP: 1.355, NZD: 0.674, SEK: 0.1092, SGD: 0.7402, ZAR: 0.0646 },
+  "2022-02": { AUD: 0.7167, CAD: 0.7864, EUR: 1.1342, GBP: 1.3537, NZD: 0.6679, SEK: 0.1077, SGD: 0.7426, ZAR: 0.0657 },
+  "2022-03": { AUD: 0.7374, CAD: 0.79, EUR: 1.1019, GBP: 1.3175, NZD: 0.6866, SEK: 0.1045, SGD: 0.736, ZAR: 0.0668 },
+  "2022-04": { AUD: 0.7379, CAD: 0.7924, EUR: 1.0819, GBP: 1.2933, NZD: 0.6772, SEK: 0.1049, SGD: 0.7322, ZAR: 0.0665 },
+  "2022-05": { AUD: 0.7055, CAD: 0.7785, EUR: 1.0578, GBP: 1.245, NZD: 0.6406, SEK: 0.1008, SGD: 0.7235, ZAR: 0.0629 },
+  "2022-06": { AUD: 0.7025, CAD: 0.7806, EUR: 1.0566, GBP: 1.2321, NZD: 0.635, SEK: 0.0997, SGD: 0.7225, ZAR: 0.0633 },
+  "2022-07": { AUD: 0.6852, CAD: 0.7723, EUR: 1.0179, GBP: 1.1982, NZD: 0.6193, SEK: 0.0963, SGD: 0.7163, ZAR: 0.0593 },
+  "2022-08": { AUD: 0.6961, CAD: 0.7744, EUR: 1.0128, GBP: 1.1987, NZD: 0.6269, SEK: 0.0965, SGD: 0.7226, ZAR: 0.0599 },
+  "2022-09": { AUD: 0.6684, CAD: 0.7511, EUR: 0.9904, GBP: 1.1327, NZD: 0.5936, SEK: 0.0919, SGD: 0.7075, ZAR: 0.057 },
+  "2022-10": { AUD: 0.635, CAD: 0.729, EUR: 0.9826, GBP: 1.1287, NZD: 0.568, SEK: 0.0897, SGD: 0.7017, ZAR: 0.0551 },
+  "2022-11": { AUD: 0.6601, CAD: 0.7441, EUR: 1.0201, GBP: 1.1741, NZD: 0.6063, SEK: 0.0938, SGD: 0.7212, ZAR: 0.0572 },
+  "2022-12": { AUD: 0.6751, CAD: 0.7365, EUR: 1.0589, GBP: 1.2179, NZD: 0.6356, SEK: 0.0964, SGD: 0.7398, ZAR: 0.0579 },
+  "2023-01": { AUD: 0.6938, CAD: 0.744, EUR: 1.0769, GBP: 1.2208, NZD: 0.6391, SEK: 0.0961, SGD: 0.7539, ZAR: 0.0584 },
+  "2023-02": { AUD: 0.6907, CAD: 0.7441, EUR: 1.0715, GBP: 1.2101, NZD: 0.6298, SEK: 0.0959, SGD: 0.7513, ZAR: 0.0559 },
+  "2023-03": { AUD: 0.6677, CAD: 0.7308, EUR: 1.0706, GBP: 1.214, NZD: 0.6209, SEK: 0.0954, SGD: 0.7458, ZAR: 0.0547 },
+  "2023-04": { AUD: 0.6693, CAD: 0.7415, EUR: 1.0968, GBP: 1.2447, NZD: 0.6207, SEK: 0.0967, SGD: 0.7508, ZAR: 0.0551 },
+  "2023-05": { AUD: 0.6649, CAD: 0.7399, EUR: 1.0868, GBP: 1.2485, NZD: 0.6217, SEK: 0.0956, SGD: 0.7466, ZAR: 0.0526 },
+  "2023-06": { AUD: 0.671, CAD: 0.752, EUR: 1.084, GBP: 1.2625, NZD: 0.6129, SEK: 0.0928, SGD: 0.7426, ZAR: 0.0534 },
+  "2023-07": { AUD: 0.6734, CAD: 0.7565, EUR: 1.1058, GBP: 1.288, NZD: 0.6227, SEK: 0.0951, SGD: 0.7495, ZAR: 0.055 },
+  "2023-08": { AUD: 0.6487, CAD: 0.7419, EUR: 1.0909, GBP: 1.2701, NZD: 0.5996, SEK: 0.0924, SGD: 0.7403, ZAR: 0.0533 },
+  "2023-09": { AUD: 0.6428, CAD: 0.739, EUR: 1.0684, GBP: 1.2401, NZD: 0.5932, SEK: 0.0902, SGD: 0.7336, ZAR: 0.0527 },
+  "2023-10": { AUD: 0.6349, CAD: 0.7298, EUR: 1.0563, GBP: 1.2169, NZD: 0.5897, SEK: 0.0907, SGD: 0.7304, ZAR: 0.0525 },
+  "2023-11": { AUD: 0.6498, CAD: 0.7289, EUR: 1.0808, GBP: 1.2417, NZD: 0.5994, SEK: 0.0936, SGD: 0.7415, ZAR: 0.0539 },
+  "2023-12": { AUD: 0.6681, CAD: 0.7441, EUR: 1.0903, GBP: 1.2653, NZD: 0.6211, SEK: 0.0973, SGD: 0.7502, ZAR: 0.0536 },
+  "2024-01": { AUD: 0.6641, CAD: 0.7453, EUR: 1.0905, GBP: 1.2699, NZD: 0.6171, SEK: 0.0967, SGD: 0.7485, ZAR: 0.0532 },
+  "2024-02": { AUD: 0.6529, CAD: 0.7412, EUR: 1.0795, GBP: 1.263, NZD: 0.6127, SEK: 0.096, SGD: 0.7438, ZAR: 0.0526 },
+  "2024-03": { AUD: 0.6555, CAD: 0.7383, EUR: 1.0872, GBP: 1.2713, NZD: 0.6085, SEK: 0.0962, SGD: 0.7461, ZAR: 0.053 },
+  "2024-04": { AUD: 0.6514, CAD: 0.7317, EUR: 1.0728, GBP: 1.2524, NZD: 0.5963, SEK: 0.0926, SGD: 0.7371, ZAR: 0.053 },
+  "2024-05": { AUD: 0.6626, CAD: 0.7316, EUR: 1.0812, GBP: 1.2637, NZD: 0.6068, SEK: 0.0931, SGD: 0.7403, ZAR: 0.0543 },
+  "2024-06": { AUD: 0.6639, CAD: 0.7294, EUR: 1.0759, GBP: 1.2711, NZD: 0.6134, SEK: 0.0953, SGD: 0.7396, ZAR: 0.0543 },
+  "2024-07": { AUD: 0.6671, CAD: 0.7294, EUR: 1.0844, GBP: 1.2859, NZD: 0.6031, SEK: 0.094, SGD: 0.7426, ZAR: 0.0548 },
+  "2024-08": { AUD: 0.6651, CAD: 0.7318, EUR: 1.1012, GBP: 1.2934, NZD: 0.6081, SEK: 0.0961, SGD: 0.7601, ZAR: 0.0554 },
+  "2024-09": { AUD: 0.6773, CAD: 0.7386, EUR: 1.1106, GBP: 1.3219, NZD: 0.6224, SEK: 0.0978, SGD: 0.7715, ZAR: 0.0568 },
+  "2024-10": { AUD: 0.6711, CAD: 0.7273, EUR: 1.0904, GBP: 1.306, NZD: 0.6087, SEK: 0.0956, SGD: 0.7635, ZAR: 0.0569 },
+  "2024-11": { AUD: 0.6535, CAD: 0.7156, EUR: 1.063, GBP: 1.2749, NZD: 0.5916, SEK: 0.0918, SGD: 0.7483, ZAR: 0.0558 },
+  "2024-12": { AUD: 0.6341, CAD: 0.7026, EUR: 1.0479, GBP: 1.2655, NZD: 0.5753, SEK: 0.0911, SGD: 0.7408, ZAR: 0.055 },
+  "2025-01": { AUD: 0.6228, CAD: 0.6947, EUR: 1.0354, GBP: 1.234, NZD: 0.5629, SEK: 0.0902, SGD: 0.7347, ZAR: 0.0534 },
+  "2025-02": { AUD: 0.63, CAD: 0.6992, EUR: 1.0413, GBP: 1.2535, NZD: 0.5678, SEK: 0.0926, SGD: 0.7426, ZAR: 0.0541 },
+  "2025-03": { AUD: 0.6298, CAD: 0.6964, EUR: 1.0807, GBP: 1.2911, NZD: 0.5724, SEK: 0.0985, SGD: 0.7483, ZAR: 0.0547 },
+  "2025-04": { AUD: 0.6286, CAD: 0.7142, EUR: 1.1214, GBP: 1.3134, NZD: 0.5825, SEK: 0.1022, SGD: 0.755, ZAR: 0.0529 },
+  "2025-05": { AUD: 0.6437, CAD: 0.7208, EUR: 1.1278, GBP: 1.3371, NZD: 0.5937, SEK: 0.1036, SGD: 0.773, ZAR: 0.0553 },
+  "2025-06": { AUD: 0.6498, CAD: 0.731, EUR: 1.1516, GBP: 1.3551, NZD: 0.6025, SEK: 0.1046, SGD: 0.7791, ZAR: 0.056 },
+  "2025-07": { AUD: 0.6537, CAD: 0.7306, EUR: 1.1677, GBP: 1.3504, NZD: 0.5997, SEK: 0.1043, SGD: 0.7805, ZAR: 0.0563 },
+  "2025-08": { AUD: 0.6491, CAD: 0.7244, EUR: 1.1631, GBP: 1.3443, NZD: 0.5898, SEK: 0.1042, SGD: 0.7778, ZAR: 0.0564 },
+  "2025-09": { AUD: 0.6593, CAD: 0.723, EUR: 1.1732, GBP: 1.3502, NZD: 0.5884, SEK: 0.1067, SGD: 0.7782, ZAR: 0.0573 },
+  "2025-10": { AUD: 0.6541, CAD: 0.7144, EUR: 1.163, GBP: 1.3345, NZD: 0.5758, SEK: 0.106, SGD: 0.7716, ZAR: 0.0579 },
+  "2025-11": { AUD: 0.6505, CAD: 0.7115, EUR: 1.156, GBP: 1.3137, NZD: 0.5656, SEK: 0.1052, SGD: 0.7677, ZAR: 0.0581 },
+  "2025-12": { AUD: 0.664, CAD: 0.7242, EUR: 1.1709, GBP: 1.3382, NZD: 0.5782, SEK: 0.1075, SGD: 0.7744, ZAR: 0.0594 },
+  "2026-01": { AUD: 0.6785, CAD: 0.7258, EUR: 1.1738, GBP: 1.3519, NZD: 0.5844, SEK: 0.1099, SGD: 0.7812, ZAR: 0.0614 },
+  "2026-02": { AUD: 0.7054, CAD: 0.7326, EUR: 1.1824, GBP: 1.3586, NZD: 0.6007, SEK: 0.1112, SGD: 0.7894, ZAR: 0.0625 },
+  "2026-03": { AUD: 0.7019, CAD: 0.7293, EUR: 1.1558, GBP: 1.3342, NZD: 0.5849, SEK: 0.1074, SGD: 0.7815, ZAR: 0.0597 },
+  "2026-04": { AUD: 0.71, CAD: 0.7273, EUR: 1.1706, GBP: 1.3466, NZD: 0.5853, SEK: 0.1081, SGD: 0.7839, ZAR: 0.0605 },
+  "2026-05": { AUD: 0.718, CAD: 0.7283, EUR: 1.1673, GBP: 1.3485, NZD: 0.59, SEK: 0.1075, SGD: 0.7839, ZAR: 0.0607 },
+  "2026-06": { AUD: 0.7028, CAD: 0.7125, EUR: 1.1518, GBP: 1.3335, NZD: 0.5785, SEK: 0.1052, SGD: 0.7765, ZAR: 0.061 },
+  "2026-07": { AUD: 0.6964, CAD: 0.7083, EUR: 1.1417, GBP: 1.3371, NZD: 0.5776, SEK: 0.1034, SGD: 0.7743, ZAR: 0.0607 },
+  "2026-08": { AUD: 0.7102, CAD: 0.719, EUR: 1.1593, GBP: 1.3542, NZD: 0.5908, SEK: 0.1052, SGD: 0.7835, ZAR: 0.0619 },
+  "2026-09": { AUD: 0.7148, CAD: 0.7187, EUR: 1.1544, GBP: 1.3451, NZD: 0.5792, SEK: 0.1029, SGD: 0.7864, ZAR: 0.0618 },
 };
+const FX_MONTHS = Object.keys(FX_MONTHLY).sort();
+function fxRate(cur, date) {
+  if (FX_PEGGED[cur] != null) return FX_PEGGED[cur];
+  let ym = date ? date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") : FX_MONTHS[FX_MONTHS.length - 1];
+  if (ym > FX_MONTHS[FX_MONTHS.length - 1]) ym = FX_MONTHS[FX_MONTHS.length - 1];
+  if (ym < FX_MONTHS[0]) ym = FX_MONTHS[0];
+  const row = FX_MONTHLY[ym];
+  return row && row[cur] != null ? row[cur] : null;
+}
 const AIRTABLE_TZ_OFFSET_H = 3;      // Airtable times are UTC+3, Aircall is UTC
 const CALL_LOOKAHEAD_DAYS = 14;      // calls counted for a lead up to this many days after it came in
 const SMALL_SAMPLE = 20;             // fewer leads than this = greyed "small sample"
@@ -795,13 +863,13 @@ function buildLeads(rows) {
     else desk = region === "NA" ? "US" : "OUS";
     const rawPrice = parseFloat(String(r["Price AED"] || "").replace(/[^0-9.\-]/g, "")) || 0; // deal's own currency, despite the label
     const cur = String(r["Currency"] || "").trim().toUpperCase() || "USD";
-    let rate = FX_RATES[cur];
-    if (rate == null) { rate = 1; if (rawPrice) UNKNOWN_FX.add(cur); }
-    const price = rawPrice * rate;
     let closed = parseLongDate(r["Closed date"]);
     const isClosedStatus = status === "closed";
     const isRefund = REFUND_STATUSES.includes(status);
     if ((isClosedStatus || isRefund) && !closed) closed = created;
+    let rate = fxRate(cur, (isClosedStatus || isRefund) ? closed : created);
+    if (rate == null) { rate = 1; if (rawPrice) UNKNOWN_FX.add(cur); }
+    const price = rawPrice * rate;
     let bucket;
     if (isClosedStatus) bucket = "closed";
     else if (isRefund) bucket = "refund";
@@ -1358,7 +1426,9 @@ function render() {
   renderStatus();
   $("fxNote").hidden = !has;
   if (!has) return;
-  $("fxBody").innerHTML = Object.entries(FX_RATES).filter(([c]) => c !== "USD").map(([c, v]) => `<span>1 ${c} = $${v}</span>`).join("") +
+  const lastM = FX_MONTHS[FX_MONTHS.length - 1];
+  $("fxBody").innerHTML = `<span>Latest month (${lastM}):</span>` + Object.entries(FX_MONTHLY[lastM]).map(([c, v]) => `<span>1 ${c} = $${v.toFixed(3)}</span>`).join("") +
+    Object.entries(FX_PEGGED).filter(([c]) => c !== "USD").map(([c, v]) => `<span>1 ${c} = $${v} (pegged)</span>`).join("") +
     (UNKNOWN_FX.size ? `<span style="color:var(--bad)">No rate for ${esc([...UNKNOWN_FX].join(", "))}. Counted as USD until a rate is added.</span>` : "");
   const r = getRange();
   const base = baseLeads();

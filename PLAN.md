@@ -76,7 +76,7 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - Meeting = "Meeting Done" only.
 - SDR-led revenue shows for both the SDR and the AE, counted once in totals.
 - People who left (e.g. Mateo Pautasso) count in totals, hidden from people tables.
-- `Price AED` is in the deal's own currency (`Currency` column). Converted to USD with a fixed, editable rate table (`FX_RATES` in index.html).
+- `Price AED` is in the deal's own currency (`Currency` column). Converted to USD at the ECB monthly average rate for the month the deal closed (open leads: month created); AED/SAR/QAR/BHD/KWD at their dollar peg. Table `FX_MONTHLY` in index.html (Dec 2021 – Sep 2026; later months use the latest).
 - Airtable times are UTC+3; Aircall is UTC. Subtract 3h before joining.
 - Calls join to leads on the last 9 digits of the phone number.
 - SDR vs AE calls are told apart by the Aircall `user` name.
