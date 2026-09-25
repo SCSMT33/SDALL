@@ -40,7 +40,7 @@ All filters are dropdowns in the top bar.
 - Tiles: Meeting Done % (main), Lead→Deal %, Non-Response %, SDR-led leads
 - Monthly chart (one line per SDR + SDR team), then per-SDR table (leads, revenue, AOV, AE-rejected %)
 - Calls & cadence: coverage, median time to first call, second-day call %, "not responsive" never called, cadence (reserved) — tiles, monthly chart, per-SDR table
-- Bottom: Why leads drop out, Lost / Disqualified switch
+- Bottom: Why leads drop out, Lost / Disqualified switch + person picker (SDR team or one SDR)
 
 **3. AEs** (grouped by desk, Andrew flagged)
 - Leads switch: AE-direct (default) / From SDRs / All leads — applies to everything on the tab

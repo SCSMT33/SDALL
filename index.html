@@ -545,6 +545,7 @@ td .who { font-weight: 500; }
         <div><h3 id="sdrReasonsTitle">Why leads drop out</h3><div class="sub" id="sdrReasonsSub">Leads created in the date range</div></div>
         <div class="seg" data-key="sdrReason"><button data-v="lost">Lost</button><button data-v="dq">Disqualified</button></div>
       </div>
+      <div class="seg whopick" data-key="sdrReasonWho" id="sdrReasonWho"></div>
       <div class="hbars" id="sdrReasons"></div>
     </div>
   </section>
@@ -725,7 +726,7 @@ const DEFAULTS = {
   prefsVersion: 2,
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", aeReasonWho: "all", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
+  sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", aeReasonWho: "all", sdrReasonWho: "all", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
 if (!S.hidden || typeof S.hidden !== "object") S.hidden = { SDR: [], AE: [] };
@@ -1696,8 +1697,11 @@ function renderSDR(base, r) {
   if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, ds, v => pct(v));
 
   renderCalls("sdr", "SDR", people, (L, nm) => L.sdr === nm, base, r);
-  const fsdr = S.focusSDR && names.has(S.focusSDR) ? S.focusSDR : null;
-  renderReasons("sdr", leads.filter(L => inR(L.created, r) && (fsdr ? L.sdr === fsdr : names.has(L.sdr))), fsdr || "SDR team");
+  // Reasons: pick the SDR team or one SDR
+  const who = names.has(S.sdrReasonWho) ? S.sdrReasonWho : "all";
+  $("sdrReasonWho").innerHTML = [`<button data-v="all" class="${who === "all" ? "on" : ""}">SDR team</button>`]
+    .concat(people.map(p => `<button data-v="${esc(p.name)}" class="${who === p.name ? "on" : ""}"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${personColor(p)}"></i>${esc(p.name)}</button>`)).join("");
+  renderReasons("sdr", leads.filter(L => inR(L.created, r) && (who !== "all" ? L.sdr === who : names.has(L.sdr))), who === "all" ? "SDR team" : who);
 }
 
 /* ---------- AEs ---------- */
