@@ -243,6 +243,8 @@ button.tile:hover { border-color: var(--axis); }
 .tile .proj { font-size: 12.5px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
 .tile .proj i { width: 8px; height: 8px; border-radius: 2px; background: var(--proj1); flex: none; }
 .tile .proj b { color: var(--ink); }
+.whopick { margin-bottom: 12px; }
+.whopick button { display: inline-flex; align-items: center; }
 .grstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
 @media (max-width: 800px) { .grstats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .gstat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
@@ -602,6 +604,7 @@ td .who { font-weight: 500; }
         <div><h3 id="aeReasonsTitle">Why leads drop out</h3><div class="sub" id="aeReasonsSub">Leads created in the date range</div></div>
         <div class="seg" data-key="aeReason"><button data-v="lost">Lost</button><button data-v="dq">Disqualified</button></div>
       </div>
+      <div class="seg whopick" data-key="aeReasonWho" id="aeReasonWho"></div>
       <div class="hbars" id="aeReasons"></div>
     </div>
   </section>
@@ -722,7 +725,7 @@ const DEFAULTS = {
   prefsVersion: 2,
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
-  sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
+  sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", aeReasonWho: "all", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
 };
 const S = Object.assign({}, DEFAULTS, loadPrefs());
 if (!S.hidden || typeof S.hidden !== "object") S.hidden = { SDR: [], AE: [] };
@@ -1771,8 +1774,11 @@ function renderAE(base, r) {
   $("aeTable").innerHTML = html;
 
   renderCalls("ae", "AE", people, (L, nm) => scope.test(L) && L.ae === nm, base, r);
-  const focus = S.focusAE && names.has(S.focusAE) ? S.focusAE : null;
-  renderReasons("ae", leads.filter(L => inR(L.created, r) && (focus ? L.ae === focus : names.has(L.ae))), focus || "all AEs");
+  // Reasons: pick All or one AE
+  const who = names.has(S.aeReasonWho) ? S.aeReasonWho : "all";
+  $("aeReasonWho").innerHTML = [`<button data-v="all" class="${who === "all" ? "on" : ""}">All AEs</button>`]
+    .concat(people.map(p => `<button data-v="${esc(p.name)}" class="${who === p.name ? "on" : ""}"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${personColor(p)}"></i>${esc(p.name)}</button>`)).join("");
+  renderReasons("ae", leads.filter(L => inR(L.created, r) && (who !== "all" ? L.ae === who : names.has(L.ae))), who === "all" ? "all AEs" : who);
 }
 
 /* ---------- Habits ---------- */

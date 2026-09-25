@@ -47,7 +47,7 @@ All filters are dropdowns in the top bar.
 - Tiles: Revenue, AOV, Meeting Done %, Lead→Deal %
 - Monthly chart (one line per AE + All AEs; Revenue, AOV, Meeting Done %, Lead→Deal %, Meeting→Close %), then per-AE table
 - Calls & cadence: same as SDRs, for AEs
-- Bottom: Why leads drop out, Lost / Disqualified switch
+- Bottom: Why leads drop out, Lost / Disqualified switch + person picker (All AEs or one AE)
 
 (The separate Habits tab was removed; its content lives on the SDRs and AEs tabs.)
 
