@@ -346,6 +346,33 @@ td .who { font-weight: 500; }
 .fxnote { margin-top: 24px; font-size: 12.5px; color: var(--muted); }
 .fxnote summary { cursor: pointer; }
 .fxnote div { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-variant-numeric: tabular-nums; }
+/* Data files panel */
+#dataBtn { display: inline-flex; align-items: center; gap: 7px; }
+#dataBtn i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; }
+#dataBtn.ok i { background: var(--good); }
+#dataBtn.part i { background: var(--s4); }
+.popover.datapop { left: auto; right: 0; width: min(440px, 92vw); padding: 12px; }
+.slot { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 2px 10px; padding: 8px 6px; border-top: 1px solid var(--grid); }
+.slot:first-of-type { border-top: 0; }
+.slot > i { width: 8px; height: 8px; border-radius: 50%; background: var(--axis); margin-top: 6px; }
+.slot.ok > i { background: var(--good); }
+.slot b { font-size: 13px; font-weight: 600; }
+.slot .what { grid-column: 2; font-size: 12px; color: var(--muted); }
+.slot .have { grid-column: 2; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.slot .files { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.slot .files span { font-size: 11px; background: var(--chip); border-radius: 999px; padding: 1px 4px 1px 8px; display: inline-flex; align-items: center; gap: 2px; color: var(--ink-2); }
+.slot .files button { border: 0; background: transparent; color: var(--muted); padding: 0 4px; font-size: 13px; line-height: 1; }
+.slot .files button:hover { color: var(--bad); }
+/* Follow-up section */
+.fubox { position: relative; }
+.fuexp { margin: 10px 2px 0; }
+.fuctl { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; }
+.fuctl label { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.fuctl input { accent-color: var(--accent); margin: 0; }
+.fupie { display: grid; grid-template-columns: minmax(0, 1fr); }
+.futable th { white-space: normal; vertical-align: bottom; line-height: 1.25; }
+.futable td, .futable th { padding-inline: 7px; }
+.checkdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -362,7 +389,10 @@ td .who { font-weight: 500; }
       </nav>
       <div class="data-status">
         <span class="pill" id="pillAirtable"><i></i>Airtable: not loaded</span>
-        <span class="pill" id="pillAircall"><i></i>Aircall: not loaded</span>
+        <div class="field" id="dataField">
+          <button class="btn" id="dataBtn" aria-haspopup="true" aria-expanded="false"><i></i><span id="dataBtnTxt">Data files</span></button>
+          <div class="popover datapop" id="dataPop" hidden></div>
+        </div>
         <button class="btn primary" id="loadBtn">Load files</button>
         <button class="btn ghost" id="clearBtn" hidden>Clear</button>
         <input type="file" id="fileInput" accept=".csv,text/csv" multiple hidden>
@@ -421,12 +451,16 @@ td .who { font-weight: 500; }
 
 <main class="wrap">
   <section id="emptyState" class="empty" hidden>
-    <h2>Drop your two exports anywhere on this page</h2>
+    <h2>Drop your exports anywhere on this page</h2>
     <p>The dashboard reads the files right here in your browser. Nothing is uploaded. It remembers the last files you loaded, so next time it opens with your data.</p>
     <div class="filecards">
       <div class="filecard"><b>Airtable export</b><span>All leads. Powers revenue, AOV, Lead→Deal % and Meeting Done %.</span></div>
-      <div class="filecard"><b>Aircall export</b><span>Call history. Powers the Habits tab: coverage, speed to first call, second-day calls.</span></div>
+      <div class="filecard"><b>Aircall call history</b><span>Calls. Powers Calls &amp; cadence and the follow-up charts.</span></div>
+      <div class="filecard"><b>Aircall SMS drilldown</b><span>Texts sent from Aircall (US desk). Follow-up charts.</span></div>
+      <div class="filecard"><b>Respond.io: messages, contacts, users</b><span>WhatsApp (OUS desk). All three files are needed to match messages to leads and reps.</span></div>
+      <div class="filecard"><b>Email activity</b><span>One file per month. Drop as many months as you have; overlaps are removed.</span></div>
     </div>
+    <p class="note">Only the Airtable file is required. You can drop several files at once.</p>
     <button class="btn primary" id="loadBtn2">Choose files</button>
   </section>
 
@@ -491,6 +525,7 @@ td .who { font-weight: 500; }
         </div>
       </div>
     </div>
+    <div id="ovFU" class="tabpane"></div>
   </section>
 
   <!-- SDRS -->
@@ -540,6 +575,7 @@ td .who { font-weight: 500; }
       <div class="tablewrap" id="sdrCallsTable" style="margin-top:14px"></div>
       <p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within 14 days of the lead coming in. Second-day call = called again on a later day than the first call. “Never called” = leads marked “Not responsive” that got no call. Months with very few leads are left blank.</p>
     </div>
+    <div id="sdrFU" class="tabpane"></div>
     <div class="card">
       <div class="cardhead">
         <div><h3 id="sdrReasonsTitle">Why leads drop out</h3><div class="sub" id="sdrReasonsSub">Leads created in the date range</div></div>
@@ -600,6 +636,7 @@ td .who { font-weight: 500; }
       <div class="tablewrap" id="aeCallsTable" style="margin-top:14px"></div>
       <p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within 14 days of the lead coming in. Second-day call = called again on a later day than the first call. “Never called” = leads marked “Not responsive” that got no call. Months with very few leads are left blank.</p>
     </div>
+    <div id="aeFU" class="tabpane"></div>
     <div class="card">
       <div class="cardhead">
         <div><h3 id="aeReasonsTitle">Why leads drop out</h3><div class="sub" id="aeReasonsSub">Leads created in the date range</div></div>
@@ -616,7 +653,7 @@ td .who { font-weight: 500; }
   </details>
 </main>
 
-<div class="dropveil" id="dropVeil" hidden><div>Drop the Airtable and/or Aircall CSV</div></div>
+<div class="dropveil" id="dropVeil" hidden><div>Drop your CSV exports (Airtable, Aircall, Respond.io, email)</div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -626,20 +663,20 @@ td .who { font-weight: 500; }
 /* ================= CONFIG (edit here) ================= */
 // Current team. Anyone not listed counts in totals but is hidden from the people tables.
 const ROSTER = [
-  { name: "MJ Montero",        role: "SDR", desk: "US" },
-  { name: "Gospel Lim",        role: "SDR", desk: "US" },
-  { name: "Mark Paolo Santos", role: "SDR", desk: "OUS" },
-  { name: "Levi Ceballos",     role: "SDR", desk: "OUS" },
-  { name: "Andrew Thomas",     role: "AE",  desk: "US",  chip: "Senior book" },
-  { name: "Khalil Khodor",     role: "AE",  desk: "US" },
-  { name: "Savio Obeid",       role: "AE",  desk: "US" },
-  { name: "Stephan Moubarak",  role: "AE",  desk: "US" },
-  { name: "Firas Azar",        role: "AE",  desk: "OUS", chip: "Benchmark" },
-  { name: "Elie El Khoury",    role: "AE",  desk: "OUS" },
-  { name: "Sinar Knayzeh",     role: "AE",  desk: "OUS" },
+  { name: "MJ Montero",        role: "SDR", desk: "US",  email: "jonalyn@shootday.co" },
+  { name: "Gospel Lim",        role: "SDR", desk: "US",  email: "gospel@shootday.co" },
+  { name: "Mark Paolo Santos", role: "SDR", desk: "OUS", email: "mark@shootday.co" },
+  { name: "Levi Ceballos",     role: "SDR", desk: "OUS", email: "levi@shootday.co" },
+  { name: "Andrew Thomas",     role: "AE",  desk: "US",  email: "andrew@shootday.co", chip: "Senior book" },
+  { name: "Khalil Khodor",     role: "AE",  desk: "US",  email: "khalil@shootday.co" },
+  { name: "Savio Obeid",       role: "AE",  desk: "US",  email: "savio@shootday.co" },
+  { name: "Stephan Moubarak",  role: "AE",  desk: "US",  email: "stephan@shootday.co" },
+  { name: "Firas Azar",        role: "AE",  desk: "OUS", email: "firas@shootday.co", chip: "Benchmark" },
+  { name: "Elie El Khoury",    role: "AE",  desk: "OUS", email: "eliekhoury@shootday.co" },  // not Elie Terzian (elie@)
+  { name: "Sinar Knayzeh",     role: "AE",  desk: "OUS", email: "sinar@shootday.co" },
 ];
 // Different spellings of the same person (lowercase key -> roster name).
-const ALIASES = { "mark santos": "Mark Paolo Santos" };
+const ALIASES = { "mark santos": "Mark Paolo Santos", "elie khoury": "Elie El Khoury" };
 // Prices in the Airtable export are in each deal's own currency (the "Currency" column).
 // Each price is converted to USD at the ECB monthly average rate for the month the deal closed
 // (open leads: the month they came in). Currencies pegged to the dollar use their fixed peg.
@@ -716,6 +753,7 @@ function fxRate(cur, date) {
   return row && row[cur] != null ? row[cur] : null;
 }
 const AIRTABLE_TZ_OFFSET_H = 3;      // Airtable times are UTC+3, Aircall is UTC
+const RESPOND_TZ_OFFSET_H = 4;       // Respond.io (WhatsApp) export times are UTC+4; Aircall SMS and email files are UTC
 const CALL_LOOKAHEAD_DAYS = 14;      // calls counted for a lead up to this many days after it came in
 const SMALL_SAMPLE = 20;             // fewer leads than this = greyed "small sample"
 const REFUND_STATUSES = ["deposit refund", "full refund", "partial refund"];
@@ -724,6 +762,7 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 /* ================= STATE ================= */
 const DEFAULTS = {
   prefsVersion: 2,
+  fuMode: "pre", fuNoTouch: false, fuAndrew: true,
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
   sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", aeReasonWho: "all", sdrReasonWho: "all", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
@@ -735,6 +774,10 @@ if (!Array.isArray(S.excluded)) S.excluded = [];
 const FORMER = "__former__"; // leads owned by people no longer on the team
 const SHOW_TABLE = { ov: false, sdr: false, ae: false, gr: false };
 let LEADS = [], CALLS = [], META = { airtable: null, aircall: null };
+// Follow-up sources (see the Data files panel). Emails come as one file per month.
+let SMS = [], WA_MSGS = [], CONTACTS = null, RUSERS = null;
+const EMAIL_FILES = new Map();   // file name -> reduced rows
+let FU = null;                   // follow-up index, rebuilt when any file changes
 let CALLS_BY_PHONE = new Map(), CALL_WINDOW = null, CALL_USERS = new Set();
 // Older history in the export only has closed deals. Percentages only count from the month every lead is present.
 let FULL_START = null;
@@ -816,29 +859,95 @@ function ymd(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padSta
 
 /* ================= LOADING ================= */
 function stripBOM(t) { return t.charCodeAt(0) === 0xfeff ? t.slice(1) : t; }
+const KINDS = {
+  airtable: { label: "Airtable leads", what: "All leads export. Required." },
+  aircall:  { label: "Aircall call history", what: "Calls (all SDR and AE lines)." },
+  sms:      { label: "Aircall SMS drilldown", what: "Texts sent from Aircall (US desk)." },
+  wa:       { label: "Respond.io messages", what: "WhatsApp messages (OUS desk). Needs contacts + users too." },
+  contacts: { label: "Respond.io contacts", what: "Turns a WhatsApp contact ID into a phone number." },
+  users:    { label: "Respond.io users", what: "Turns a WhatsApp sender ID into a rep." },
+  email:    { label: "Email activity", what: "One file per month. Add every month you have." },
+};
 function detectKind(text) {
   const head = stripBOM(text).slice(0, 3000).toLowerCase();
+  const first = head.split("\n")[0];
   if (head.includes("sdr owner") || head.includes("sales status")) return "airtable";
+  if (first.includes("sent_at_utc") && first.includes("owner_email")) return "email";
+  if (first.includes("sender id") && first.includes("contact id")) return "wa";
+  if (first.includes("contactid") && first.includes("phonenumber")) return "contacts";
+  if (first.includes("user id") && first.includes("first name")) return "users";
+  if (first.includes("segments") && first.includes("customer number")) return "sms";
   if (head.includes("customer number") || head.includes("call id") || head.includes("datetime (utc)")) return "aircall";
   return null;
 }
 async function handleFiles(files) {
-  let loaded = 0, unknown = [];
+  let loaded = 0; const unknown = [];
+  if (files.length > 1 || files.some(f => f.size > 5e6)) showToast("Reading " + files.length + " file" + (files.length > 1 ? "s" : "") + "…");
   for (const f of files) {
     const text = await f.text();
     const kind = detectKind(text);
     if (!kind) { unknown.push(f.name); continue; }
-    ingest(kind, text, f.name, Date.now());
-    idbPut(kind, { name: f.name, text, at: Date.now() });
+    const rows = ingest(kind, text, f.name, Date.now());
+    // Airtable and Aircall are kept as the original text; the other exports are kept already reduced (much faster to reopen).
+    idbPut(kind === "email" ? "email:" + f.name : kind, kind === "airtable" || kind === "aircall" ? { name: f.name, text, at: Date.now() } : { name: f.name, rows, at: Date.now() });
     loaded++;
   }
-  if (unknown.length) showToast("Couldn't recognise " + unknown.join(", ") + ". Use the Airtable leads export or the Aircall call history export.");
-  if (loaded) { joinCalls(); render(); }
+  if (unknown.length) showToast("Couldn't recognise " + unknown.join(", ") + ". Open Data files to see which exports the dashboard reads.");
+  if (loaded) { joinCalls(); buildFU(); render(); }
 }
-function ingest(kind, text, name, at) {
-  const rows = Papa.parse(stripBOM(text), { header: true, skipEmptyLines: true }).data;
+// text = the CSV; or pass reduced rows saved earlier (reduced = true). Returns the reduced rows for the follow-up sources.
+function ingest(kind, text, name, at, reduced) {
+  const rows = reduced || Papa.parse(stripBOM(text), { header: true, skipEmptyLines: true }).data;
   if (kind === "airtable") { LEADS = buildLeads(rows); META.airtable = { name, at, n: LEADS.length }; }
-  else { CALLS = buildCalls(rows); META.aircall = { name, at, n: CALLS.length }; }
+  else if (kind === "aircall") { CALLS = buildCalls(rows); META.aircall = { name, at, n: CALLS.length }; }
+  else if (kind === "sms") { SMS = reduced || buildSMS(rows); META.sms = { name, at, n: SMS.length }; return SMS; }
+  else if (kind === "wa") { WA_MSGS = reduced || buildWA(rows); META.wa = { name, at, n: WA_MSGS.length }; return WA_MSGS; }
+  else if (kind === "contacts") { const r = reduced || [...buildContacts(rows)]; CONTACTS = new Map(r); META.contacts = { name, at, n: CONTACTS.size }; return r; }
+  else if (kind === "users") { const r = reduced || [...buildRUsers(rows)]; RUSERS = new Map(r); META.users = { name, at, n: RUSERS.size }; return r; }
+  else if (kind === "email") { const r = reduced || buildEmails(rows); EMAIL_FILES.set(name, r); return r; }
+}
+// "2026-09-26 00:11:23.394" / "2026-09-28 5:37:14" / "2026-09-29T20:30:00.000Z" -> ms, given the file's UTC offset
+function parseStamp(s, offsetH) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(String(s || "").trim());
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)) - offsetH * 3600e3 : null;
+}
+function buildSMS(rows) {
+  const out = [];
+  for (const r of rows) { const t = parseStamp(r["Date"], 0); if (t != null) out.push({ t, user: normName(r["User"]), ph: phone9(r["Customer Number"]) }); }
+  return out;
+}
+function buildWA(rows) {
+  const out = [];
+  for (const r of rows) {
+    const t = parseStamp(r["Date & Time"], RESPOND_TZ_OFFSET_H); if (t == null) continue;
+    const type = String(r["Message Type"] || "").toLowerCase(), who = String(r["Sender Type"] || "").toLowerCase();
+    if (type === "incoming") out.push({ t, c: String(r["Contact ID"] || "").trim(), in: true });
+    else if (type === "outgoing" && who === "user") out.push({ t, c: String(r["Contact ID"] || "").trim(), s: String(r["Sender ID"] || "").trim() });
+  }
+  return out;
+}
+function buildContacts(rows) {
+  const m = new Map();
+  for (const r of rows) m.set(String(r["ContactID"] || "").trim(), { ph: phone9(r["PhoneNumber"]), em: String(r["Email"] || "").trim().toLowerCase() });
+  return m;
+}
+function buildRUsers(rows) {
+  const m = new Map();
+  for (const r of rows) m.set(String(r["User ID"] || "").trim(), { email: String(r["User Email"] || "").trim().toLowerCase(), name: normName((r["First Name"] || "") + " " + (r["Last Name"] || "")) });
+  return m;
+}
+function buildEmails(rows) {
+  const out = [];
+  for (const r of rows) {
+    const t = parseStamp(r["sent_at_utc"], 0); if (t == null) continue;
+    out.push({
+      t, dir: String(r["direction"] || "").trim().toLowerCase(), oe: String(r["owner_email"] || "").trim().toLowerCase(),
+      client: String(r["client_email"] || "").trim().toLowerCase(),
+      to: String(r["to_emails"] || "").toLowerCase().split(";").map(x => x.trim()).filter(Boolean),
+      subj: String(r["subject"] || "").toLowerCase(), mid: String(r["message_id"] || "") || String(t) + r["subject"],
+    });
+  }
+  return out;
 }
 
 // Finds a "new customer" style column if the export has one. Returns { col, isRepeat(value) } or null.
@@ -968,6 +1077,163 @@ function joinCalls() {
   }
 }
 
+/* ================= FOLLOW-UP ENGINE ================= */
+// Touches on a lead = the owner's own outbound calls, Aircall SMS, WhatsApp messages and sent emails,
+// matched by phone (last 9 digits) or by the lead's email address.
+const FU_LOOKBACK_MIN = 10;          // a touch up to 10 min before the lead's timestamp still counts
+const FU_NEW_REQUEST_H = 24;         // a new request from the same person more than 24h later starts a new lead
+const FU_REPLY_CALL_SEC = 30;        // an answered call of 30s+ counts as the client replying
+const FU_INSTANT_CLOSE_MIN = 60;     // deals that closed within 1h of coming in = direct bookings, no follow-up possible
+const FU_REMINDER = "call starts in 1 hour";  // automatic meeting reminder subject
+const EMAIL_TO_NAME = new Map(ROSTER.filter(p => p.email).map(p => [p.email.toLowerCase(), p.name]));
+const leadOwner = L => L.sdr || L.ae;
+const normSubj = s => s.replace(/^\s*((re|fwd?|fw)\s*:\s*)+/i, "").trim();
+function nextDay(utcMs) { const d = localDay(utcMs); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+// First fully covered day: the day of the first record if it's within the first 3 hours of that day (the export starts at midnight), else the next day.
+function firstFullDay(utcMs) { const d = localDay(utcMs), h = (utcMs + AIRTABLE_TZ_OFFSET_H * 3600e3) % 86400e3 / 3600e3; return h < 3 ? d : new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); }
+
+function buildFU() {
+  FU = null;
+  if (!LEADS.length) return;
+  const T = new Map(), R = new Map();
+  const push = (m, k, v) => { let a = m.get(k); if (!a) m.set(k, a = []); a.push(v); };
+  const leadPh = new Set(), leadEm = new Set(), em2ph = new Map();
+  for (const L of LEADS) {
+    L.utc = toUTCms(L.created, AIRTABLE_TZ_OFFSET_H);
+    L.closedUtc = L.closed ? toUTCms(L.closed, AIRTABLE_TZ_OFFSET_H) : null;
+    if (L.ph) leadPh.add(L.ph);
+    if (L.email) { leadEm.add(L.email); if (L.ph) em2ph.set(L.email, L.ph); }
+  }
+  const span = (o, t) => o ? { s: Math.min(o.s, t), e: Math.max(o.e, t) } : { s: t, e: t };
+  const cov = { calls: null, sms: null, wa: null, email: null, mailbox: new Map() };
+  const match = { sms: [0, 0], wa: [0, 0], email: [0, 0], waNoUser: 0 };
+  for (const c of CALLS) {
+    cov.calls = span(cov.calls, c.t);
+    if (!c.ph) continue;
+    if (c.dir === "outbound") push(T, "p" + c.ph, { t: c.t, u: c.user, k: "call" });
+    if (c.answered && c.talk >= FU_REPLY_CALL_SEC) push(R, "p" + c.ph, c.t);
+  }
+  for (const x of SMS) {
+    cov.sms = span(cov.sms, x.t);
+    if (ROSTER_BY_NAME.has(x.user)) { match.sms[1]++; if (leadPh.has(x.ph)) match.sms[0]++; }
+    if (x.ph) push(T, "p" + x.ph, { t: x.t, u: x.user, k: "sms" });
+  }
+  const waReady = WA_MSGS.length && CONTACTS && RUSERS;
+  const waUser = new Map();
+  if (RUSERS) for (const [id, u] of RUSERS) { const nm = EMAIL_TO_NAME.get(u.email) || (ROSTER_BY_NAME.has(u.name) ? u.name : null); if (nm) waUser.set(id, nm); }
+  if (waReady) for (const m of WA_MSGS) {
+    cov.wa = span(cov.wa, m.t);
+    const c = CONTACTS.get(m.c);
+    let ph = c ? c.ph : "";
+    if (c && !leadPh.has(ph)) ph = em2ph.get(c.em) || "";
+    if (m.in) { if (ph) push(R, "p" + ph, m.t); continue; }
+    const u = waUser.get(m.s); if (!u) continue;
+    match.wa[1]++;
+    if (!ph || !leadPh.has(ph)) continue;
+    match.wa[0]++;
+    push(T, "p" + ph, { t: m.t, u, k: "wa" });
+  }
+  const seen = new Set();
+  for (const rows of EMAIL_FILES.values()) for (const x of rows) {
+    if (seen.has(x.mid)) continue; seen.add(x.mid);
+    const owner = EMAIL_TO_NAME.get(x.oe);
+    if (x.dir === "received") { if (x.client) push(R, "e" + x.client, x.t); }
+    if (!owner) continue;
+    cov.mailbox.set(owner, span(cov.mailbox.get(owner), x.t));
+    cov.email = span(cov.email, x.t);
+    if (x.dir !== "sent") continue;
+    const addrs = new Set([x.client, ...x.to].filter(a => a && !a.endsWith("@shootday.co")));
+    match.email[1]++; if ([...addrs].some(a => leadEm.has(a))) match.email[0]++;
+    for (const a of addrs) push(T, "e" + a, { t: x.t, u: owner, k: "email", subj: x.subj, mid: x.mid });
+  }
+  for (const m of [T, R]) for (const a of m.values()) a.sort((x, y) => (x.t ?? x) - (y.t ?? y));
+  // Next separate request from the same person (phone or email), for bounding each lead's window.
+  const byContact = new Map();
+  for (const L of LEADS) { if (L.junk) continue; for (const k of ["p" + L.ph, "e" + L.email]) if (k.length > 1) push(byContact, k, L.utc); }
+  for (const a of byContact.values()) a.sort((x, y) => x - y);
+  FU = { T, R, cov, match, byContact, seq: new Map(), waReady, emailFiles: EMAIL_FILES.size, exportUtc: LEADS[LEADS.length - 1].utc };
+  // Automatic email series: a mailbox that keeps emailing leads at the same time of day the lead came in (0–30 min after),
+  // far more often than chance, is running an automatic sequence. Its subjects that make up 10%+ of those emails are flagged.
+  const tally = new Map();
+  for (const L of LEADS) {
+    const o = leadOwner(L); if (!ROSTER_BY_NAME.has(o) || !L.email) continue;
+    for (const e of T.get("e" + L.email) || []) {
+      if (e.u !== o) continue;
+      const d = (e.t - L.utc) / 60e3; if (d < 1440 || d > 45 * 1440) continue;
+      const off = d % 1440, x = tally.get(o) || { hit: 0, rest: 0, subj: new Map() };
+      if (off < 30) { x.hit++; const k = normSubj(e.subj); x.subj.set(k, (x.subj.get(k) || 0) + 1); } else if (off >= 60) x.rest++;
+      tally.set(o, x);
+    }
+  }
+  for (const [o, x] of tally) {
+    const chance = x.rest / 46; // same-width window anywhere else in the day
+    if (x.hit >= 20 && x.hit > 5 * chance) FU.seq.set(o, { subjects: [...x.subj].filter(([k, n]) => k && n >= 0.1 * x.hit).map(([k]) => k), hit: x.hit, chance });
+  }
+}
+function fuIsAuto(e, L, owner) {
+  if (e.subj.includes(FU_REMINDER)) return true;
+  const sq = FU.seq.get(owner); if (!sq || e.t < L.utc) return false;
+  return ((e.t - L.utc) / 60e3) % 1440 <= 30 && sq.subjects.some(k => e.subj.includes(k));
+}
+// Which channels exist, and from which day every loaded channel covers this owner (Airtable-clock dates).
+function fuWindow(owner) {
+  const c = FU.cov, starts = [], ends = [];
+  for (const k of ["calls", "sms", "wa"]) if (c[k]) { starts.push(firstFullDay(c[k].s)); ends.push(nextDay(c[k].e)); }
+  const mb = c.mailbox.get(owner);
+  if (mb) starts.push(firstFullDay(mb.s));
+  if (c.email) ends.push(nextDay(c.email.e));
+  const exportDay = LEADS[LEADS.length - 1].created;
+  const start = starts.length ? new Date(Math.max(...starts)) : null;
+  let end = ends.length ? new Date(Math.min(...ends)) : null;
+  if (end && end > exportDay) end = new Date(exportDay.getTime() + 1);
+  return { start, end, noMailbox: !!c.email && !mb };
+}
+// Count one lead's touches by the owner. Options: until (utc ms), stopAtReply, handoverTo (AE name: SDR touches stop at the AE's first touch).
+function fuTouches(L, owner, o = {}) {
+  let hi = o.until != null ? o.until : FU.exportUtc;
+  if (!o.until) for (const k of ["p" + L.ph, "e" + L.email]) {
+    const a = k.length > 1 && FU.byContact.get(k); if (!a) continue;
+    const nx = a.find(t => t > L.utc + FU_NEW_REQUEST_H * 3600e3); if (nx != null && nx < hi) hi = nx;
+  }
+  const lo = L.utc - FU_LOOKBACK_MIN * 60e3;
+  const ev = [], mids = new Set();
+  for (const k of ["p" + L.ph, "e" + L.email]) {
+    if (k.length < 2) continue;
+    for (const e of FU.T.get(k) || []) {
+      if (e.t < lo || e.t > hi) continue;
+      if (e.k === "email") { if (mids.has(e.mid)) continue; mids.add(e.mid); }
+      ev.push(e);
+    }
+  }
+  if (o.handoverTo) { const h = ev.filter(e => e.u === o.handoverTo).reduce((m, e) => Math.min(m, e.t), Infinity); if (h < hi) hi = h; }
+  let reply = null;
+  if (o.stopAtReply) for (const k of ["p" + L.ph, "e" + L.email]) for (const t of (k.length > 1 && FU.R.get(k)) || []) if (t >= lo && t <= hi && (reply == null || t < reply)) reply = t;
+  const n = { call: 0, sms: 0, wa: 0, email: 0, auto: 0 };
+  for (const e of ev) {
+    if (e.u !== owner || e.t > hi) continue;
+    if (reply != null && e.t >= reply) continue;
+    n[e.k === "email" && fuIsAuto(e, L, owner) ? "auto" : e.k]++;
+  }
+  n.hand = n.call + n.sms + n.wa + n.email;
+  n.replied = reply != null;
+  return n;
+}
+function fuAgg(recs) {
+  const a = { n: recs.length, touch: [0, 0, 0, 0], chan: [0, 0, 0, 0, 0, 0], call: 0, sms: 0, wa: 0, email: 0, auto: 0, anyAll: 0, hands: [], alls: [] };
+  for (const { t } of recs) {
+    a.touch[t.hand === 0 ? 0 : t.hand <= 2 ? 1 : t.hand <= 5 ? 2 : 3]++;
+    const ph = t.call > 0, tx = t.sms + t.wa > 0, em = t.email > 0;
+    a.chan[ph && tx && em ? 0 : ph && em ? 1 : tx && em ? 2 : em ? 3 : ph || tx ? 4 : 5]++;
+    for (const k of ["call", "sms", "wa", "email", "auto"]) a[k] += t[k];
+    if (t.hand + t.auto > 0) a.anyAll++;
+    a.hands.push(t.hand); a.alls.push(t.hand + t.auto);
+  }
+  a.hands.sort((x, y) => x - y); a.alls.sort((x, y) => x - y);
+  a.median = a.n ? a.hands[a.n >> 1] : null;      // middle lead (upper middle when even)
+  a.medianAll = a.n ? a.alls[a.n >> 1] : null;
+  return a;
+}
+
 /* IndexedDB: remembers the last files loaded (stays in this browser only) */
 function idb() {
   return new Promise((res, rej) => {
@@ -985,6 +1251,11 @@ async function idbGet(k) {
   catch (e) { return null; }
 }
 async function idbClear() { try { const db = await idb(); db.transaction("files", "readwrite").objectStore("files").clear(); } catch (e) {} }
+async function idbDel(k) { try { const db = await idb(); db.transaction("files", "readwrite").objectStore("files").delete(k); } catch (e) {} }
+async function idbKeys() {
+  try { const db = await idb(); return await new Promise(res => { const q = db.transaction("files").objectStore("files").getAllKeys(); q.onsuccess = () => res(q.result || []); q.onerror = () => res([]); }); }
+  catch (e) { return []; }
+}
 
 /* ================= FILTERS & MATH ================= */
 function getRange() {
@@ -1373,7 +1644,7 @@ Chart.register({
   id: "dateHover",
   afterEvent(chart, args) {
     const e = args.event, a = chart.chartArea;
-    if (e.type !== "mousemove" || chart.options.indexAxis === "y") return;
+    if (e.type !== "mousemove" || chart.options.indexAxis === "y" || !chart.scales.x) return;
     if (e.y > a.bottom && e.x >= a.left && e.x <= a.right) {
       const items = Chart.Interaction.modes.index(chart, { type: e.type, native: e.native, x: e.x, y: a.bottom - 1 }, { intersect: false, axis: "x" }, false);
       chart.tooltip.setActiveElements(items.map(i => ({ datasetIndex: i.datasetIndex, index: i.index })), { x: e.x, y: a.bottom });
@@ -1452,22 +1723,48 @@ function render() {
 }
 
 function renderStatus() {
-  const a = META.airtable, c = META.aircall;
-  const pa = $("pillAirtable"), pc = $("pillAircall");
-  pa.className = "pill" + (a ? " ok" : ""); pc.className = "pill" + (c ? " ok" : "");
+  const a = META.airtable, pa = $("pillAirtable");
+  pa.className = "pill" + (a ? " ok" : "");
   if (a) {
     const last = LEADS.length ? LEADS[LEADS.length - 1].created : null;
     pa.innerHTML = `<i></i>Airtable: ${fmtInt(a.n)} leads${last ? " · to " + fmtDate(last) : ""}`;
     pa.title = a.name;
   } else pa.innerHTML = `<i></i>Airtable: not loaded`;
-  if (c) {
-    const e = CALLS.length ? new Date(CALLS[CALLS.length - 1].t) : null;
-    pc.innerHTML = `<i></i>Aircall: ${fmtInt(c.n)} calls${e ? " · to " + fmtDate(e) : ""}`;
-    pc.title = c.name;
-  } else pc.innerHTML = `<i></i>Aircall: not loaded`;
-  $("clearBtn").hidden = !(a || c);
+  const have = { airtable: !!a, aircall: !!META.aircall, sms: !!META.sms, wa: !!META.wa, contacts: !!META.contacts, users: !!META.users, email: EMAIL_FILES.size > 0 };
+  const n = Object.values(have).filter(Boolean).length, total = Object.keys(have).length;
+  $("dataBtnTxt").textContent = `Data files · ${n} of ${total}`;
+  $("dataBtn").className = "btn" + (n === total ? " ok" : n ? " part" : "");
+  $("clearBtn").hidden = !n;
+  if (!$("dataPop").hidden) renderDataPop();
 }
-
+function renderDataPop() {
+  const span = arr => { if (!arr.length) return ""; let lo = Infinity, hi = -Infinity; for (const x of arr) { if (x.t < lo) lo = x.t; if (x.t > hi) hi = x.t; } return `${fmtDate(localDay(lo))} – ${fmtDate(localDay(hi))}`; };
+  const info = {
+    airtable: META.airtable && `${fmtInt(LEADS.length)} leads · ${fmtDate(LEADS[0].created)} – ${fmtDate(LEADS[LEADS.length - 1].created)}`,
+    aircall: META.aircall && `${fmtInt(CALLS.length)} calls · ${span(CALLS)}`,
+    sms: META.sms && `${fmtInt(SMS.length)} texts · ${span(SMS)}`,
+    wa: META.wa && `${fmtInt(WA_MSGS.length)} messages · ${span(WA_MSGS)}`,
+    contacts: META.contacts && `${fmtInt(CONTACTS.size)} contacts`,
+    users: META.users && `${fmtInt(RUSERS.size)} users`,
+  };
+  let emailInfo = "";
+  if (EMAIL_FILES.size) {
+    let n = 0; const ids = new Set(); let lo = Infinity, hi = -Infinity;
+    for (const rows of EMAIL_FILES.values()) for (const x of rows) { if (ids.has(x.mid)) continue; ids.add(x.mid); n++; if (x.t < lo) lo = x.t; if (x.t > hi) hi = x.t; }
+    const boxes = FU ? [...FU.cov.mailbox].sort((x, y) => x[1].s - y[1].s).map(([nm, c]) => `${nm.split(" ")[0]} from ${fmtDate(localDay(c.s))}`) : [];
+    emailInfo = `${fmtInt(n)} emails (duplicates removed) · ${fmtDate(localDay(lo))} – ${fmtDate(localDay(hi))}` + (boxes.length ? `<br>Mailboxes tracked: ${esc(boxes.join(", "))}` : "");
+  }
+  const slot = k => {
+    const ok = k === "email" ? EMAIL_FILES.size > 0 : !!META[k];
+    const files = k === "email" ? [...EMAIL_FILES.keys()].sort().map(nm => `<span>${esc(nm)}<button data-rmemail="${esc(nm)}" title="Remove this file" aria-label="Remove ${esc(nm)}">×</button></span>`).join("") : "";
+    return `<div class="slot${ok ? " ok" : ""}"><i></i><b>${KINDS[k].label}</b><div class="what">${KINDS[k].what}</div>` +
+      (ok ? `<div class="have">${k === "email" ? emailInfo : info[k]}${k !== "email" && META[k].name ? ` <span class="note">· ${esc(META[k].name)}</span>` : ""}</div>` : `<div class="have" style="color:var(--muted)">Not loaded</div>`) +
+      (files ? `<div class="files">${files}</div>` : "") + `</div>`;
+  };
+  $("dataPop").innerHTML = `<div class="pophead"><b>Data files</b><button class="linkbtn" id="dataLoad">Load files…</button></div>` +
+    Object.keys(KINDS).map(slot).join("") +
+    `<p class="note" style="margin:8px 6px 2px">Drop files anywhere on the page. The dashboard works out which export each file is. A new file of the same type replaces the old one; email files add up (one per month). Everything stays in this browser.</p>`;
+}
 function rangeText(r) { return `${fmtDate(r.start)} – ${fmtDate(new Date(r.end - 86400e3))}`; }
 
 /* ---------- Overview ---------- */
@@ -1597,6 +1894,7 @@ function renderOverview(base, r) {
     : "Load the Aircall file to add a “Called” step.";
   $("ovLost").innerHTML = hbarsHTML(topReasons(cohort, "lost"), null, { neutral: true, noPct: true });
   $("ovDq").innerHTML = hbarsHTML(topReasons(cohort, "dq"), null, { neutral: true, noPct: true });
+  renderFollowUp("ov", "all", leads, r);
 }
 
 /* ---------- Growth vs last year (Overview) ---------- */
@@ -1697,6 +1995,7 @@ function renderSDR(base, r) {
   if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, ds, v => pct(v));
 
   renderCalls("sdr", "SDR", people, (L, nm) => L.sdr === nm, base, r);
+  renderFollowUp("sdr", "SDR", base, r);
   // Reasons: pick the SDR team or one SDR
   const who = names.has(S.sdrReasonWho) ? S.sdrReasonWho : "all";
   $("sdrReasonWho").innerHTML = [`<button data-v="all" class="${who === "all" ? "on" : ""}">SDR team</button>`]
@@ -1778,6 +2077,7 @@ function renderAE(base, r) {
   $("aeTable").innerHTML = html;
 
   renderCalls("ae", "AE", people, (L, nm) => scope.test(L) && L.ae === nm, base, r);
+  renderFollowUp("ae", "AE", base, r);
   // Reasons: pick All or one AE
   const who = names.has(S.aeReasonWho) ? S.aeReasonWho : "all";
   $("aeReasonWho").innerHTML = [`<button data-v="all" class="${who === "all" ? "on" : ""}">All AEs</button>`]
@@ -1877,6 +2177,162 @@ function renderCalls(pre, role, people, pick, base, r) {
   $(pre + "CallsTable").innerHTML = html + `</tbody></table>`;
 }
 
+/* ---------- Follow-up before disqualification (Overview, SDRs, AEs) ---------- */
+const FU_TOGGLE_PERSON = "Andrew Thomas";   // the closed-deals chart can leave this person out
+const FU_TOUCH = { labels: ["No touch recorded", "1–2 touches", "3–5 touches", "6+ touches"], colors: () => [cssVar("--neutral-bar"), "#eda100", "#6da7ec", "#1c5cab"] };
+const FU_CHAN = { labels: ["Calls + texts + email", "Calls + email", "Texts + email", "Email only", "Calls / texts only", "Nothing recorded"], colors: () => [cssVar("--s3"), cssVar("--s1"), cssVar("--s7"), cssVar("--s2"), cssVar("--s4"), cssVar("--neutral-bar")] };
+const FU_TYPES = [["call", "Calls", "--s1"], ["sms", "SMS", "--s2"], ["wa", "WhatsApp", "--s3"], ["email", "Email (by hand)", "--s7"], ["auto", "Automatic email", null]];
+function fuStripes() {
+  const c = document.createElement("canvas"); c.width = c.height = 8;
+  const x = c.getContext("2d"); x.fillStyle = cssVar("--surface-2"); x.fillRect(0, 0, 8, 8);
+  x.strokeStyle = cssVar("--muted"); x.lineWidth = 1.4; x.beginPath(); x.moveTo(0, 8); x.lineTo(8, 0); x.moveTo(-2, 2); x.lineTo(2, -2); x.moveTo(6, 10); x.lineTo(10, 6); x.stroke();
+  return x.createPattern(c, "repeat");
+}
+function fuRange(a, b) { return a && b ? `${fmtDate(a)} – ${fmtDate(b)}` : "—"; }
+function fuSources() {
+  const c = FU.cov, m = FU.match, d = t => fmtDate(localDay(t)), parts = [], missing = [];
+  if (c.calls) parts.push(`Aircall calls ${d(c.calls.s)} – ${d(c.calls.e)}`); else missing.push("Aircall call history");
+  if (c.sms) parts.push(`Aircall SMS ${d(c.sms.s)} – ${d(c.sms.e)} (${pct(m.sms[0] / (m.sms[1] || 1), 0)} matched to a lead)`); else missing.push("Aircall SMS");
+  if (FU.waReady) parts.push(`WhatsApp ${d(c.wa.s)} – ${d(c.wa.e)} (${pct(m.wa[0] / (m.wa[1] || 1), 0)} of reps' messages matched to a lead; the rest went to contacts who aren't leads)`);
+  else missing.push("Respond.io " + [!WA_MSGS.length && "messages", !CONTACTS && "contacts", !RUSERS && "users"].filter(Boolean).join(" + "));
+  if (c.email) parts.push(`sent emails from ${FU.emailFiles} file${FU.emailFiles > 1 ? "s" : ""}, ${d(c.email.s)} – ${d(c.email.e)} (${pct(m.email[0] / (m.email[1] || 1), 0)} go to a lead)`); else missing.push("email activity");
+  return { text: parts.join(" · "), missing };
+}
+function fuSkeleton(pre, pie) {
+  return `<div class="sechead sub2"><div><h2>Follow-up before disqualification</h2><p id="${pre}FuSub"></p></div></div>
+  <div class="banner" id="${pre}FuBanner" hidden></div>
+  <div id="${pre}FuBody" class="tabpane">
+    <div class="grid2">
+      <div class="card"><div class="cardhead"><div><h3>Touches before disqualification</h3><div class="sub">Share of each person's not-responsive leads, by how many times they reached out</div></div></div>
+        <div class="fubox" id="${pre}Fu1Box"><canvas id="${pre}Fu1Chart" aria-label="Touches per lead before disqualification"></canvas></div><p class="note fuexp" id="${pre}Fu1Note"></p></div>
+      <div class="card"><div class="cardhead"><div><h3>Channels used</h3><div class="sub">Which channels the owner used on each lead</div></div></div>
+        <div class="fubox" id="${pre}Fu2Box"><canvas id="${pre}Fu2Chart" aria-label="Channels used per lead"></canvas></div><p class="note fuexp" id="${pre}Fu2Note"></p></div>
+    </div>
+    <div class="card"><div class="cardhead"><div><h3>Type of touches</h3><div class="sub">Average touches per lead, by type. Striped = automatic emails (shown, not counted as follow-up)</div></div></div>
+      <div class="fubox" id="${pre}Fu3Box"><canvas id="${pre}Fu3Chart" aria-label="Average touches per lead by type"></canvas></div><p class="note fuexp" id="${pre}Fu3Note"></p></div>
+    <div class="card"><div class="cardhead"><div><h3>Per person</h3><div class="sub">Not-responsive leads and follow-up, by hand and including automatic emails</div></div></div>
+      <div class="tablewrap" id="${pre}FuTable"></div><p class="note fuexp" id="${pre}FuTableNote"></p></div>
+  </div>` + (pie ? `<div class="card" id="fuPieCard">
+    <div class="cardhead"><div><h3>How many follow-ups closed new customers needed</h3><div class="sub" id="fuPieSub"></div></div>
+      <div class="fuctl"><div class="seg" data-key="fuMode"><button data-v="pre">Before the client replied</button><button data-v="close">All touches before close</button></div>
+        <label><input type="checkbox" data-fu="fuNoTouch"> Include “no touch”</label><label><input type="checkbox" data-fu="fuAndrew"> Include ${esc(FU_TOGGLE_PERSON.split(" ")[0])}</label></div></div>
+    <div class="fubox" style="height:320px"><canvas id="fuPieChart" aria-label="Closed new-customer deals by number of follow-ups"></canvas></div>
+    <div class="tablewrap" id="fuPieTable" style="margin-top:12px"></div><p class="note fuexp" id="fuPieNote"></p></div>` : "");
+}
+function fuStackChart(id, names, sets, labels, colors, avg) {
+  destroy(id);
+  const box = $(id + "Box"); box.style.height = Math.max(150, names.length * 30 + 70) + "px";
+  const opts = baseOpts(v => avg ? v : v + "%");
+  opts.indexAxis = "y"; opts.interaction = { mode: "nearest", intersect: true, axis: "y" };
+  opts.plugins.legend = { display: true, position: "bottom", labels: { color: cssVar("--ink-2"), boxWidth: 10, boxHeight: 10, font: { family: cssVar("--font") } } };
+  opts.plugins.tooltip.callbacks.label = c => avg ? ` ${c.dataset.label}: ${c.raw.toFixed(1)} per lead (${fmtInt(c.dataset.raw[c.dataIndex])} total)` : ` ${c.dataset.label}: ${fmtInt(c.dataset.raw[c.dataIndex])} leads (${Math.round(c.raw)}%)`;
+  opts.scales.x = Object.assign(opts.scales.x, { stacked: true, max: avg ? undefined : 100, grid: { color: cssVar("--grid") }, ticks: Object.assign(opts.scales.x.ticks, { callback: v => avg ? v : v + "%" }) });
+  opts.scales.y = { stacked: true, grid: { display: false }, border: { color: cssVar("--axis") }, ticks: { color: cssVar("--ink-2"), autoSkip: false, font: { family: cssVar("--font") } } };
+  const bold = names.length - 1;
+  opts.scales.y.ticks.font = c => ({ family: cssVar("--font"), weight: c.index === bold ? "600" : "400" });
+  CHARTS[id] = new Chart($(id + "Chart"), { type: "bar", data: { labels: names, datasets: labels.map((l, j) => ({ label: l, data: sets[j].map((v, i) => avg ? v.avg : v.pct), raw: sets[j].map(v => v.n), backgroundColor: colors[j], borderColor: cssVar("--surface"), borderWidth: { right: 1.5 }, maxBarThickness: 20 })) }, options: opts });
+}
+function fuCollect(pool, people, r, bucket) {
+  const names = new Set(people.map(p => p.name)), win = new Map(people.map(p => [p.name, fuWindow(p.name)]));
+  const recs = [];
+  for (const L of pool) {
+    if (L.bucket !== bucket) continue;
+    const o = leadOwner(L); if (!names.has(o) || !inR(L.created, r)) continue;
+    const w = win.get(o); if (!w.start || L.created < w.start || L.created >= w.end) continue;
+    recs.push({ L, o, t: fuTouches(L, o) });
+  }
+  return { recs, win };
+}
+function renderFollowUp(pre, role, pool, r) {
+  const host = $(pre + "FU");
+  if (!host.dataset.built) { host.innerHTML = fuSkeleton(pre, pre === "ov"); host.dataset.built = "1"; }
+  const banner = $(pre + "FuBanner"), body = $(pre + "FuBody");
+  const anySrc = FU && (FU.cov.calls || FU.cov.sms || FU.waReady || FU.cov.email);
+  if (!anySrc) {
+    banner.hidden = false; body.hidden = true; if ($("fuPieCard")) $("fuPieCard").hidden = true;
+    banner.innerHTML = "Load the Aircall, Respond.io and email exports to fill this section. Open <b>Data files</b> at the top to see which files it reads.";
+    $(pre + "FuSub").textContent = ""; return;
+  }
+  body.hidden = false; if ($("fuPieCard")) $("fuPieCard").hidden = false;
+  const src = fuSources();
+  banner.hidden = !src.missing.length;
+  banner.innerHTML = src.missing.length ? `<span>Not loaded: <b>${esc(src.missing.join(", "))}</b>. Touches on those channels are missing, so these numbers read low.</span>` : "";
+  const people = activePeople(role === "SDR" ? SDRS : role === "AE" ? AES : ROSTER);
+  const scoped = pool.filter(L => role === "SDR" ? !!L.sdr : role === "AE" ? !L.sdr : true);
+  const { recs, win } = fuCollect(scoped, people, r, "nonresp");
+  const lost = fuCollect(scoped, people, r, "lost").recs;
+  const teamLabel = role === "SDR" ? "SDR team" : role === "AE" ? "All AEs" : "Everyone";
+  const rows = people.map(p => ({ p, a: fuAgg(recs.filter(x => x.o === p.name)), lost: lost.filter(x => x.o === p.name) })).filter(x => x.a.n);
+  const tot = fuAgg(recs);
+  const whose = role === "SDR" ? "SDR-led leads (the SDR's own touches)" : role === "AE" ? "AE-only leads, no SDR (the AE's own touches). The Leads switch above doesn't change this section" : "SDR-led leads count for the SDR, AE-only leads for the AE";
+  // Effective dates = the person's covered window, cut to the date range
+  const effStart = w => w.start && (w.start > r.start ? w.start : r.start), effEnd = w => w.end && (w.end < r.end ? w.end : r.end);
+  const starts = [...new Set(rows.map(x => win.get(x.p.name)).filter(w => w.start).map(w => fmtDate(effStart(w))))];
+  const ends = rows.map(x => effEnd(win.get(x.p.name))).filter(Boolean);
+  const endTxt = ends.length ? fmtDate(new Date(Math.min(...ends) - 86400e3)) : "";
+  $(pre + "FuSub").innerHTML = `Leads with Sales status <b>Disqualified</b> and reason <b>Not responsive</b>. ${esc(whose)}. ${S.b2b ? "B2B only" : "All leads (B2B and B2C)"}${S.desk !== "all" ? ", " + S.desk + " desk" : ""}.`;
+  if (!rows.length) { body.hidden = true; banner.hidden = false; banner.innerHTML = "No not-responsive leads in the dates covered by the loaded files. Widen the date range or load more months."; if (pre === "ov") renderFuPie(pool, r); return; }
+  const names = rows.map(x => x.p.name).concat(teamLabel), aggs = rows.map(x => x.a).concat(tot);
+  const winTxt = starts.length === 1 ? `from ${starts[0]}` : `from ${starts.join(" or ")} (each person's start is in the table)`;
+  const common = `${fmtInt(tot.n)} leads created ${winTxt} to ${endTxt}. A lead only counts once every loaded channel covers its owner (e.g. a mailbox's first email). Data: ${src.text}.`;
+  fuStackChart(pre + "Fu1", names, [0, 1, 2, 3].map(j => aggs.map(a => ({ n: a.touch[j], pct: a.touch[j] / a.n * 100 }))), FU_TOUCH.labels, FU_TOUCH.colors(), false);
+  $(pre + "Fu1Note").textContent = `A touch = a call, SMS, WhatsApp or hand-sent email from the lead's owner to the lead's phone or email, from when the lead came in until the Airtable export (${fmtDate(LEADS[LEADS.length - 1].created)}) or until the same person sent a new request. ` + common;
+  fuStackChart(pre + "Fu2", names, [0, 1, 2, 3, 4, 5].map(j => aggs.map(a => ({ n: a.chan[j], pct: a.chan[j] / a.n * 100 }))), FU_CHAN.labels, FU_CHAN.colors(), false);
+  $(pre + "Fu2Note").textContent = `Same leads. Texts = SMS or WhatsApp. Automatic emails don't count as a channel. “Nothing recorded” can also mean the person worked the lead somewhere these files can't see; check the data check in the table.`;
+  const seqNames = [...FU.seq.keys()].filter(n => people.some(p => p.name === n));
+  fuStackChart(pre + "Fu3", names, FU_TYPES.map(([k]) => aggs.map(a => ({ n: a[k], avg: a[k] / a.n }))), FU_TYPES.map(t => t[1]), FU_TYPES.map(t => t[2] ? cssVar(t[2]) : fuStripes()), true);
+  $(pre + "Fu3Note").textContent = `Same leads, average per lead. Automatic emails: ${seqNames.length ? seqNames.join(" and ") + (seqNames.length > 1 ? "'s mailboxes send" : "'s mailbox sends") + " an email a few minutes after a new lead comes in, then repeats it at the same time of day; " : ""}“Our Shootday call starts in 1 hour” meeting reminders are automatic for everyone. They're shown so nothing is hidden, but the other charts only count touches made by hand.`;
+  const cell = (a, b) => `<td${b < SMALL_SAMPLE ? ' class="small"' : ""}>${b ? pct(a / b, 0) : "—"}</td>`;
+  const chk = x => { const h = x.lost.filter(y => y.t.hand > 0).length, n = x.lost.length; const col = !n ? "var(--axis)" : h / n >= 0.85 ? "var(--good)" : h / n >= 0.6 ? "var(--s4)" : "var(--bad)"; return `<td><span class="checkdot" style="background:${col}"></span>${n ? pct(h / n, 0) + ` <span class="n">${h}/${n}</span>` : "—"}</td>`; };
+  let html = `<table class="futable"><thead><tr><th>Owner</th><th>Leads<br>from</th><th>Leads</th><th>No<br>follow-up</th><th>Median<br>touches</th><th>Follow-up<br>incl. auto</th><th>Median<br>incl. auto</th><th>Calls</th><th>SMS</th><th>Whats-<br>App</th><th>Emails</th><th>Auto<br>emails</th><th>Data<br>check</th></tr></thead><tbody>`;
+  for (const x of rows) {
+    const a = x.a, w = win.get(x.p.name);
+    html += `<tr><td><span class="who">${esc(x.p.name)}</span><span class="chip">${x.p.role} · ${x.p.desk}</span>${w.noMailbox ? '<span class="chip" title="No emails from this mailbox in the email files">no email</span>' : ""}</td><td class="small">${fmtDate(effStart(w))}</td><td>${fmtInt(a.n)}</td>${cell(a.touch[0], a.n)}<td>${a.median}</td>${cell(a.anyAll, a.n)}<td>${a.medianAll}</td><td>${fmtInt(a.call)}</td><td>${fmtInt(a.sms)}</td><td>${fmtInt(a.wa)}</td><td>${fmtInt(a.email)}</td><td>${fmtInt(a.auto)}</td>${chk(x)}</tr>`;
+  }
+  const allLost = { lost: lost };
+  html += `<tr class="totalrow"><td>${teamLabel}</td><td></td><td>${fmtInt(tot.n)}</td>${cell(tot.touch[0], tot.n)}<td>${tot.median}</td>${cell(tot.anyAll, tot.n)}<td>${tot.medianAll}</td><td>${fmtInt(tot.call)}</td><td>${fmtInt(tot.sms)}</td><td>${fmtInt(tot.wa)}</td><td>${fmtInt(tot.email)}</td><td>${fmtInt(tot.auto)}</td>${chk(allLost)}</tr>`;
+  $(pre + "FuTable").innerHTML = html + "</tbody></table>";
+  $(pre + "FuTableNote").innerHTML = `<b>Data check</b> = share of the person's <b>lost</b> leads (same dates and filters) that show a touch by hand. A lost lead was qualified and talked to, so a touch should show on almost all of them. 85%+ (green) means “no follow-up” above is real; lower means part of their work happens somewhere these files can't see (another mailbox, a personal phone). Totals are counts across all their leads. Grey percentages = fewer than ${SMALL_SAMPLE} leads.`;
+  if (pre === "ov") renderFuPie(pool, r);
+}
+// Closed new-customer deals in the date range (by close date): how many follow-ups came before them.
+function renderFuPie(pool, r) {
+  const people = activePeople(ROSTER).filter(p => S.fuAndrew || p.name !== FU_TOGGLE_PERSON), names = new Set(people.map(p => p.name));
+  const win = new Map(ROSTER.map(p => [p.name, fuWindow(p.name)]));
+  const left = { repeat: 0, instant: 0, before: 0, dup: 0 }, seenClient = new Set(), deals = [];
+  const closed = pool.filter(L => L.bucket === "closed" && L.closed && inR(L.closed, r) && names.has(leadOwner(L))).sort((a, b) => a.closed - b.closed);
+  for (const L of closed) {
+    if (L.repeat) { left.repeat++; continue; }
+    if ((L.closedUtc - L.utc) / 60e3 < FU_INSTANT_CLOSE_MIN) { left.instant++; continue; }
+    const o = leadOwner(L), w = win.get(o);
+    if (!w.start || L.created < w.start || L.closed >= w.end) { left.before++; continue; }
+    const key = L.email || L.ph; if (key && seenClient.has(key)) { left.dup++; continue; }
+    if (key) seenClient.add(key);
+    const t = fuTouches(L, o, { until: L.closedUtc, stopAtReply: S.fuMode === "pre", handoverTo: L.sdr ? L.ae : null });
+    deals.push({ o, n: t.hand, replied: t.replied });
+  }
+  const idx = S.fuNoTouch ? [0, 1, 2, 3] : [1, 2, 3];
+  const bk = n => n === 0 ? 0 : n <= 2 ? 1 : n <= 5 ? 2 : 3;
+  const cnt = list => { const c = [0, 0, 0, 0]; for (const d of list) c[bk(d.n)]++; return c; };
+  const c = cnt(deals), v = idx.map(i => c[i]), total = v.reduce((a, b) => a + b, 0), cols = FU_TOUCH.colors();
+  document.querySelectorAll("#fuPieCard input[data-fu]").forEach(i => { i.checked = !!S[i.dataset.fu]; });
+  document.querySelectorAll('#fuPieCard .seg[data-key="fuMode"] button').forEach(b => b.classList.toggle("on", b.dataset.v === S.fuMode));
+  $("fuPieSub").textContent = `New customers whose deal closed in the date range (${rangeText(r)}), by the owner's touches ${S.fuMode === "pre" ? "before the client first replied" : "before the deal closed"}${S.fuAndrew ? "" : " · " + FU_TOGGLE_PERSON + " left out"}.`;
+  destroy("fuPie");
+  const opts = { responsive: true, maintainAspectRatio: false, animation: false, cutout: "55%", plugins: {
+    legend: { position: innerWidth < 640 ? "bottom" : "right", labels: { color: cssVar("--ink-2"), boxWidth: 12, boxHeight: 12, font: { family: cssVar("--font") }, generateLabels: ch => ch.data.labels.map((l, i) => ({ text: `${l}: ${total ? Math.round(v[i] / total * 100) : 0}% (${v[i]})`, fillStyle: ch.data.datasets[0].backgroundColor[i], strokeStyle: "transparent", fontColor: cssVar("--ink-2"), index: i })) } },
+    tooltip: { backgroundColor: cssVar("--surface"), titleColor: cssVar("--ink"), bodyColor: cssVar("--ink-2"), borderColor: cssVar("--axis"), borderWidth: 1, callbacks: { label: x => ` ${x.label}: ${x.raw} of ${total} deals (${Math.round(x.raw / (total || 1) * 100)}%)` } } } };
+  const center = { id: "fuCenter", afterDraw(ch) { const m = ch.getDatasetMeta(0).data[0]; if (!m) return; const x = ch.ctx; x.save(); x.textAlign = "center"; x.fillStyle = cssVar("--ink"); x.font = `600 20px ${cssVar("--font")}`; x.fillText(total, m.x, m.y + 2); x.font = `12px ${cssVar("--font")}`; x.fillStyle = cssVar("--muted"); x.fillText("new deals", m.x, m.y + 18); x.restore(); } };
+  CHARTS.fuPie = new Chart($("fuPieChart"), { type: "doughnut", data: { labels: idx.map(i => i === 0 ? (S.fuMode === "pre" ? "No touch (client replied first)" : "No touch recorded") : FU_TOUCH.labels[i]), datasets: [{ data: v, backgroundColor: idx.map(i => cols[i]), borderColor: cssVar("--surface"), borderWidth: 2 }] }, options: opts, plugins: [center] });
+  const row = (label, list, strong) => { const cc = cnt(list), t = idx.reduce((a, i) => a + cc[i], 0); return `<tr${strong ? ' class="totalrow"' : ""}><td>${esc(label)}</td>${idx.map(i => `<td${t < SMALL_SAMPLE ? ' class="small"' : ""}>${t ? pct(cc[i] / t, 0) : "—"} <span class="n">${cc[i]}</span></td>`).join("")}<td>${t}</td></tr>`; };
+  $("fuPieTable").innerHTML = `<table><thead><tr><th>Owner</th>${idx.map(i => `<th>${FU_TOUCH.labels[i].replace(" recorded", "")}</th>`).join("")}<th>Deals</th></tr></thead><tbody>` +
+    people.filter(p => deals.some(d => d.o === p.name)).map(p => row(p.name, deals.filter(d => d.o === p.name))).join("") + row("Everyone", deals, true) + "</tbody></table>";
+  const nRep = deals.filter(d => d.replied).length;
+  $("fuPieNote").innerHTML = `<b>Deals counted:</b> closed deals from new customers (“New deal” checked) that closed in the date range, one per client, SDR-led and AE-only, with every filter above. Touches = the owner's calls, SMS, WhatsApp and hand-sent emails, counted from when the lead came in; automatic emails never count. For SDR-led deals, SDR touches stop at handover (the AE's first touch). ` +
+    (S.fuMode === "pre" ? `<b>Before the client replied</b> stops at the client's first reply: an email or WhatsApp from them, or a call they stayed on for ${FU_REPLY_CALL_SEC}s+ (${fmtInt(nRep)} of ${fmtInt(deals.length)} deals have one). “No touch” here = the client replied before any follow-up (often to the automatic email). ` : `<b>All touches before close</b> includes the back-and-forth after the client replied (quote, details), which is why 6+ is bigger here. `) +
+    `<b>Left out:</b> ${fmtInt(left.repeat)} repeat-client deals, ${fmtInt(left.instant)} that closed within ${FU_INSTANT_CLOSE_MIN} min of coming in (direct bookings), ${fmtInt(left.before)} whose lead came in before every channel was tracked for its owner (touches would be missing), ${fmtInt(left.dup)} later deals from the same client. Shows the follow-ups closed deals needed, not proof that follow-ups caused the close.`;
+}
+
 /* ================= CONTROLS ================= */
 const BOOL_KEYS = new Set(["b2b", "refunds", "repeat", "yoy"]);
 function renderPeoplePop() {
@@ -1964,12 +2420,26 @@ document.addEventListener("change", e => {
     if (k === "date" && v === "custom" && !S.from) { const n = new Date(); S.from = ymd(new Date(n.getFullYear(), 0, 1)); S.to = ymd(n); }
     savePrefs(); render(); return;
   }
+  const fu = e.target.closest("input[data-fu]");
+  if (fu) { S[fu.dataset.fu] = fu.checked; savePrefs(); render(); return; }
   const cb = e.target.closest("input[data-person]");
   if (cb) {
     const ex = new Set(S.excluded);
     cb.checked ? ex.delete(cb.dataset.person) : ex.add(cb.dataset.person);
     S.excluded = [...ex]; savePrefs(); render();
   }
+});
+$("dataBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  const pop = $("dataPop"), open = pop.hidden;
+  pop.hidden = !open; $("dataBtn").setAttribute("aria-expanded", open);
+  if (open) renderDataPop();
+});
+document.addEventListener("click", async e => {
+  if (e.target.closest("#dataLoad")) { $("fileInput").click(); return; }
+  const rm = e.target.closest("[data-rmemail]");
+  if (rm) { e.stopPropagation(); const nm = rm.dataset.rmemail; EMAIL_FILES.delete(nm); await idbDel("email:" + nm); buildFU(); render(); renderDataPop(); return; }
+  if (!$("dataPop").hidden && !e.target.closest("#dataField")) { $("dataPop").hidden = true; $("dataBtn").setAttribute("aria-expanded", "false"); }
 });
 $("peopleBtn").addEventListener("click", e => {
   e.stopPropagation();
@@ -1982,7 +2452,11 @@ document.addEventListener("click", e => {
   if (pb) { S.excluded = pb.dataset.people === "all" ? [] : [...ROSTER.map(p => p.name), FORMER]; savePrefs(); render(); return; }
   if (!$("peoplePop").hidden && !e.target.closest("#peopleField")) { $("peoplePop").hidden = true; $("peopleBtn").setAttribute("aria-expanded", "false"); }
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("peoplePop").hidden) { $("peoplePop").hidden = true; $("peopleBtn").focus(); } });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!$("peoplePop").hidden) { $("peoplePop").hidden = true; $("peopleBtn").focus(); }
+  if (!$("dataPop").hidden) { $("dataPop").hidden = true; $("dataBtn").focus(); }
+});
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr.person")) e.target.click(); });
 $("dateFrom").addEventListener("change", e => { S.from = e.target.value; savePrefs(); render(); });
 $("dateTo").addEventListener("change", e => { S.to = e.target.value; savePrefs(); render(); });
@@ -1990,7 +2464,8 @@ $("loadBtn").addEventListener("click", () => $("fileInput").click());
 $("loadBtn2").addEventListener("click", () => $("fileInput").click());
 $("fileInput").addEventListener("change", e => { handleFiles([...e.target.files]); e.target.value = ""; });
 $("clearBtn").addEventListener("click", async () => {
-  LEADS = []; CALLS = []; META = { airtable: null, aircall: null }; joinCalls(); await idbClear(); render();
+  LEADS = []; CALLS = []; SMS = []; WA_MSGS = []; CONTACTS = null; RUSERS = null; EMAIL_FILES.clear();
+  META = { airtable: null, aircall: null }; joinCalls(); FU = null; await idbClear(); render();
 });
 // Drag and drop anywhere
 let dragDepth = 0;
@@ -2014,10 +2489,13 @@ function showToast(msg) {
   const h = (location.hash || "").slice(1);
   if (["overview", "sdr", "ae"].includes(h)) S.tab = h;
   render();
-  const [a, c] = await Promise.all([idbGet("airtable"), idbGet("aircall")]);
-  if (a) ingest("airtable", a.text, a.name, a.at);
-  if (c) ingest("aircall", c.text, c.name, c.at);
-  if (a || c) { joinCalls(); render(); }
+  const keys = await idbKeys();
+  if (!keys.length) return;
+  for (const k of keys) {
+    const f = await idbGet(k); if (!f) continue;
+    ingest(String(k).startsWith("email:") ? "email" : k, f.text, f.name, f.at, f.rows);
+  }
+  joinCalls(); buildFU(); render();
 })();
 </script>
 </body>

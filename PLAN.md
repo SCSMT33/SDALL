@@ -1,7 +1,7 @@
 # Shootday Sales Dashboard — Plan
 
 Owner: Chase Anderson (SDR Team Lead). Local dashboard opened in Chrome.
-Data comes in by drag-and-drop: one **Airtable** export (leads) and one **Aircall** export (calls).
+Data comes in by drag-and-drop: the **Airtable** export (leads), **Aircall** calls and SMS, **Respond.io** messages + contacts + users (WhatsApp), and monthly **email activity** files. The **Data files** panel at the top lists what's loaded.
 Nothing is uploaded anywhere — the files stay in the browser.
 
 ## The 4 top numbers (always at the top)
@@ -35,11 +35,13 @@ All filters are dropdowns in the top bar.
 - Revenue projection (green bars, stacked on actuals) whenever the date range reaches today; Revenue tile shows the projected total ± accuracy; explainer box under the chart
 - Funnel: Leads → Called → Meeting Done → Closed
 - Top Lost and Disqualified reasons
+- Follow-up before disqualification (everyone) + how many follow-ups closed new customers needed
 
 **2. SDRs** (SDR-led leads)
 - Tiles: Meeting Done % (main), Lead→Deal %, Non-Response %, SDR-led leads
 - Monthly chart (one line per SDR + SDR team), then per-SDR table (leads, revenue, AOV, AE-rejected %)
 - Calls & cadence: coverage, median time to first call, second-day call %, "not responsive" never called, cadence (reserved) — tiles, monthly chart, per-SDR table
+- Follow-up before disqualification (SDR-led leads)
 - Bottom: Why leads drop out, Lost / Disqualified switch + person picker (SDR team or one SDR)
 
 **3. AEs** (grouped by desk, Andrew flagged)
@@ -47,6 +49,7 @@ All filters are dropdowns in the top bar.
 - Tiles: Revenue, AOV, Meeting Done %, Lead→Deal %
 - Monthly chart (one line per AE + All AEs; Revenue, AOV, Meeting Done %, Lead→Deal %, Meeting→Close %), then per-AE table
 - Calls & cadence: same as SDRs, for AEs
+- Follow-up before disqualification (AE-only leads, whatever the Leads switch)
 - Bottom: Why leads drop out, Lost / Disqualified switch + person picker (All AEs or one AE)
 
 (The separate Habits tab was removed; its content lives on the SDRs and AEs tabs.)
@@ -69,6 +72,16 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - Summary: growth for the last 12 / 6 / 3 months (ending on the file's last day) vs the same period a year earlier, "speeding up / steady / slowing" (3-month vs 12-month, ±10 pts), plus projected growth for the next 3 or 6 months with a range.
 - Chart: last 24 full months, each month vs the same month last year + 3-month average; projected months in green (Projection dropdown: Off / 3 / 6 / 12 months). Projected growth = projected revenue (seasonality included) ÷ same months last year.
 - Uses all leads (B2B tags are incomplete before Sep 2025); every other filter applies.
+
+## Follow-up before disqualification (Overview, SDRs, AEs)
+- Leads: Sales status Disqualified + reason Not responsive, created in the date range. Owner = SDR if set, else the AE. Every top filter applies (B2B, desk, people, view on Overview).
+- A touch = the owner's own outbound call (Aircall), SMS (Aircall), WhatsApp (Respond.io) or sent email, to the lead's phone (last 9 digits) or email, from 10 min before the lead came in until the Airtable export, or until the same person sent a new request (>24h later).
+- A lead only counts from the first full day every loaded source covers its owner (e.g. the SDR mailboxes start Aug 21, 2026, so SDR leads count from Aug 22). Each person's start is in the table.
+- Charts: touches per lead (none / 1–2 / 3–5 / 6+), channels used (mix), type of touches (average per lead). Table: by hand and incl. automatic emails, totals per channel, data check.
+- Automatic emails: meeting reminders ("Our Shootday call starts in 1 hour"), and mailboxes that keep emailing leads 0–30 min past the lead's time of day far above chance (Andrew, Firas: "Next steps for your shoot" / "Your shoot quote"). Shown striped, never counted as follow-up.
+- Data check = share of the person's lost leads (same dates/filters) with a touch. Under 85% = part of their work isn't in the files.
+- Time zones: Airtable UTC+3, Aircall calls/SMS and email UTC, Respond.io UTC+4.
+- Closed-deals donut (Overview only): new-customer deals ("New deal" checked) closed in the date range, one per client, not closed within 1h of coming in, lead created after tracking started. Touches counted until the client first replied (email/WhatsApp from them, or a 30s+ answered call) or until close; SDR touches stop at the AE's first touch. Toggles: include "no touch", include Andrew.
 
 ## Rules
 - Duplicate records (DQ reason "Duplicate record") and spam/test submissions (MQL DQ reason Spam/Test) are not leads: left out of every count.
