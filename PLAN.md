@@ -75,6 +75,7 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 
 ## Speed to lead (SDRs tab, AEs tab)
 - SDRs: SDR-led leads, Airtable record created → the SDR's first call. AEs: AE-only leads → the AE's first call or hand-sent email ("Count texts too" adds SMS/WhatsApp; automatic emails never count).
+- Own switches: Leads B2B / B2C / All (default B2B; overrides the top Leads filter for this chart) and, on the AEs tab, Include Andrew.
 - Clock time, not business hours. Buckets: within 5 min / 5–30 min / 30 min–2 h / 2–24 h / 1–7 days / no touch in 7 days. Table: median, within 5 min, within 1 h.
 - Leads of any status, from when the call file (and, for AEs, that AE's mailbox) starts. Leads under 7 days old with no touch, and deals closed within 1h of coming in, are left out.
 - On hours / Off hours: whether the lead came in during the owner's working hours. Working hours are worked out from each person's own activity (busy part of the day = 5th–95th percentile, last 120 days; days with 20%+ of the busiest day), shown in a chosen time zone (default: the browser's), and editable per person (saved in the browser).

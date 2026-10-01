@@ -770,7 +770,7 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 /* ================= STATE ================= */
 const DEFAULTS = {
   prefsVersion: 2,
-  fuMode: "pre", fuNoTouch: false, fuAndrew: true, stlHours: "all", stlTexts: false, hours: {}, hoursOpen: false,
+  fuMode: "pre", fuNoTouch: false, fuAndrew: true, stlHours: "all", stlTexts: false, stlLeads: "b2b", stlAndrew: true, hours: {}, hoursOpen: false,
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
   sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", aeReasonWho: "all", sdrReasonWho: "all", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
@@ -2284,7 +2284,7 @@ function renderSpeed(pre, role, base, r) {
     host.innerHTML = `<div class="sechead sub2"><div><h2>Speed to lead</h2><p id="${pre}StlSub"></p></div></div>
     <div class="banner" id="${pre}StlBanner" hidden></div>
     <div class="card" id="${pre}StlCard"><div class="cardhead"><div><h3>Time from new lead to first ${role === "SDR" ? "call" : "call or email"}</h3><div class="sub">Share of each person's leads, by how fast they first reached out</div></div>
-      <div class="controls"><span class="flabel">Lead came in</span><div class="seg" data-key="stlHours"><button data-v="all">Any time</button><button data-v="on">On hours</button><button data-v="off">Off hours</button></div>${role === "AE" ? `<label class="fuctl" style="font-size:12.5px;color:var(--ink-2);gap:6px"><input type="checkbox" data-fu="stlTexts"> Count texts too</label>` : ""}</div></div>
+      <div class="controls"><span class="flabel">Lead came in</span><div class="seg" data-key="stlHours"><button data-v="all">Any time</button><button data-v="on">On hours</button><button data-v="off">Off hours</button></div><span class="flabel">Leads</span><div class="seg" data-key="stlLeads"><button data-v="b2b">B2B</button><button data-v="b2c">B2C</button><button data-v="all">All</button></div>${role === "AE" ? `<label class="fuctl" style="font-size:12.5px;color:var(--ink-2);gap:6px"><input type="checkbox" data-fu="stlTexts"> Count texts too</label><label class="fuctl" style="font-size:12.5px;color:var(--ink-2);gap:6px"><input type="checkbox" data-fu="stlAndrew"> Include ${esc(FU_TOGGLE_PERSON.split(" ")[0])}</label>` : ""}</div></div>
       <div class="fubox" id="${pre}StlBox"><canvas id="${pre}StlChart" aria-label="Speed to lead"></canvas></div>
       <div class="tablewrap" id="${pre}StlTable" style="margin-top:12px"></div><p class="note fuexp" id="${pre}StlNote"></p>
       <details class="hrs" id="${pre}Hours"><summary>Working hours (used for On hours / Off hours)</summary><div id="${pre}HoursBody"></div></details></div>`;
@@ -2292,7 +2292,10 @@ function renderSpeed(pre, role, base, r) {
     $(pre + "Hours").addEventListener("toggle", e => { S.hoursOpen = e.target.open; savePrefs(); });
   }
   $(pre + "Hours").open = !!S.hoursOpen;
-  host.querySelectorAll('.seg[data-key="stlHours"] button').forEach(b => b.classList.toggle("on", b.dataset.v === S.stlHours));
+  for (const k of ["stlHours", "stlLeads"]) host.querySelectorAll(`.seg[data-key="${k}"] button`).forEach(b => b.classList.toggle("on", b.dataset.v === S[k]));
+  host.querySelectorAll('input[data-fu="stlAndrew"]').forEach(i => { i.checked = !!S.stlAndrew; });
+  // This chart has its own B2B / B2C / All switch, so start from the leads without the top B2B filter.
+  base = baseLeads(true).filter(L => S.stlLeads === "all" || (S.stlLeads === "b2b") === L.b2b);
   const banner = $(pre + "StlBanner"), card = $(pre + "StlCard");
   const hasEmail = FU && FU.cov.email;
   if (!FU || !FU.cov.calls) { banner.hidden = false; card.hidden = true; banner.textContent = "Load the Aircall call history (and for AEs the email activity files) to see speed to lead."; $(pre + "StlSub").textContent = ""; destroy(pre + "Stl"); return; }
@@ -2300,7 +2303,7 @@ function renderSpeed(pre, role, base, r) {
   banner.textContent = "Email activity isn't loaded, so AE speed to lead only counts calls. Many AEs email first.";
   const kinds = role === "SDR" ? ["call"] : (hasEmail ? ["call", "email"] : ["call"]).concat(S.stlTexts ? ["sms", "wa"] : []);
   host.querySelectorAll('input[data-fu="stlTexts"]').forEach(i => { i.checked = !!S.stlTexts; });
-  const people = activePeople(role === "SDR" ? SDRS : AES);
+  const people = activePeople(role === "SDR" ? SDRS : AES).filter(p => role === "SDR" || S.stlAndrew || p.name !== FU_TOGGLE_PERSON);
   const callStart = firstFullDay(FU.cov.calls.s), callEnd = nextDay(FU.cov.calls.e);
   const recs = [];
   for (const p of people) {
@@ -2323,8 +2326,9 @@ function renderSpeed(pre, role, base, r) {
   const agg = list => { const b = new Array(STL_BUCKETS.length).fill(0), mins = []; for (const x of list) { const i = x.min == null ? STL_BUCKETS.length - 1 : STL_BUCKETS.findIndex(k => x.min <= k.max); b[i]++; if (x.min != null) mins.push(x.min); } return { n: list.length, b, med: median(mins), touched: mins.length }; };
   const rows = people.map(p => ({ p, a: agg(recs.filter(x => x.o === p.name)) })).filter(x => x.a.n);
   const tot = agg(recs), team = role === "SDR" ? "SDR team" : "All AEs";
+  const leadsLbl = { b2b: "B2B", b2c: "B2C", all: "B2B and B2C" }[S.stlLeads] + " leads" + (role === "AE" && !S.stlAndrew ? `, ${FU_TOGGLE_PERSON} left out` : "");
   const hrsLbl = { all: "", on: " · leads that came in during the person's working hours", off: " · leads that came in outside the person's working hours" }[S.stlHours];
-  $(pre + "StlSub").textContent = role === "SDR" ? `SDR-led leads: time from the Airtable record being created to the SDR's first call${hrsLbl}.` : `AE-only leads: time from the Airtable record being created to the AE's first call or hand-sent email${S.stlTexts ? ", SMS or WhatsApp" : ""} (automatic emails don't count)${hrsLbl}.`;
+  $(pre + "StlSub").textContent = role === "SDR" ? `SDR-led ${leadsLbl}: time from the Airtable record being created to the SDR's first call${hrsLbl}.` : `AE-only ${leadsLbl}: time from the Airtable record being created to the AE's first call or hand-sent email${S.stlTexts ? ", SMS or WhatsApp" : ""} (automatic emails don't count)${hrsLbl}.`;
   if (!rows.length) { destroy(pre + "Stl"); $(pre + "StlBox").style.height = "0"; $(pre + "StlTable").innerHTML = `<p class="note">No leads in these dates and hours.</p>`; }
   else fuStackChart(pre + "Stl", rows.map(x => x.p.name).concat(team), STL_BUCKETS.map((_, j) => rows.map(x => x.a).concat(tot).map(a => ({ n: a.b[j], pct: a.b[j] / a.n * 100 }))), STL_BUCKETS.map(b => b.label), STL_BUCKETS.map(b => cssVar(b.col)), false);
   const c = (x, n) => `<td${n < SMALL_SAMPLE ? ' class="small"' : ""}>${n ? pct(x / n, 0) : "—"}</td>`;
@@ -2333,7 +2337,7 @@ function renderSpeed(pre, role, base, r) {
     `<tr class="totalrow"><td>${team}</td><td>${fmtInt(tot.n)}</td><td>${dur(tot.med)}</td>${c(tot.b[0], tot.n)}${c(recs.filter(x => x.min != null && x.min <= 60).length, tot.n)}${c(tot.b[STL_BUCKETS.length - 1], tot.n)}<td></td></tr></tbody></table>`;
   const starts = [...new Set(people.map(p => p._stl && fmtDate(p._stl.start > r.start ? p._stl.start : r.start)).filter(Boolean))];
   $(pre + "StlNote").innerHTML = `<b>Clock time, not business hours.</b> A lead that comes in at 11pm and gets called at 9am counts 10 hours. Use <b>On hours / Off hours</b> to split leads by whether they came in during that person's working hours (set below). ` +
-    `Leads of any status, created ${starts.length === 1 ? "from " + starts[0] : "from " + starts.join(" or ")} (when ${role === "SDR" ? "the Aircall file" : "the Aircall file and that AE's mailbox"} start${role === "SDR" ? "s" : ""}), inside the date range, with every filter above. A touch only counts if it's the owner's own${role === "SDR" ? " call" : S.stlTexts ? " call, email or text" : " call or email (tick “Count texts too” to include SMS and WhatsApp; some AEs text first)"} to the lead's phone or email. Leads newer than ${STL_WINDOW_D} days with no touch yet, and deals that closed within ${FU_INSTANT_CLOSE_MIN} min of coming in (direct bookings), are left out. Median = the middle lead among those that got a touch.`;
+    `Leads of any status, created ${starts.length === 1 ? "from " + starts[0] : "from " + starts.join(" or ")} (when ${role === "SDR" ? "the Aircall file" : "the Aircall file and that AE's mailbox"} start${role === "SDR" ? "s" : ""}), inside the date range, with every filter above except Leads (this chart has its own B2B / B2C / All switch). A touch only counts if it's the owner's own${role === "SDR" ? " call" : S.stlTexts ? " call, email or text" : " call or email (tick “Count texts too” to include SMS and WhatsApp; some AEs text first)"} to the lead's phone or email. Leads newer than ${STL_WINDOW_D} days with no touch yet, and deals that closed within ${FU_INSTANT_CLOSE_MIN} min of coming in (direct bookings), are left out. Median = the middle lead among those that got a touch.`;
   // Working hours editor
   const tzOpts = tz => [...new Set([tz, ...TZ_CHOICES])].map(z => `<option value="${esc(z)}"${z === tz ? " selected" : ""}>${esc(z.replace("_", " "))}</option>`).join("");
   $(pre + "HoursBody").innerHTML = `<p class="note" style="margin:8px 0">Worked out from when each person actually calls, texts and emails (the busy part of their day over the last 120 days). Change the time zone to read them in that person's local time. Edits are saved in this browser. Times are in the time zone on each row.</p>
