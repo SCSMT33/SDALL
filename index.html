@@ -372,6 +372,12 @@ td .who { font-weight: 500; }
 .fupie { display: grid; grid-template-columns: minmax(0, 1fr); }
 .futable th { white-space: normal; vertical-align: bottom; line-height: 1.25; }
 .futable td, .futable th { padding-inline: 7px; }
+.hrs { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 10px; font-size: 12.5px; }
+.hrs summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.hrs table td { padding: 5px 6px; vertical-align: middle; }
+.hrs select, .hrs input[type=time] { font-size: 12px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.hrs .days label { display: inline-flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--muted); margin-right: 2px; }
+.hrs .days input { margin: 0; accent-color: var(--accent); }
 .checkdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -575,6 +581,7 @@ td .who { font-weight: 500; }
       <div class="tablewrap" id="sdrCallsTable" style="margin-top:14px"></div>
       <p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within 14 days of the lead coming in. Second-day call = called again on a later day than the first call. “Never called” = leads marked “Not responsive” that got no call. Months with very few leads are left blank.</p>
     </div>
+    <div id="sdrSTL" class="tabpane"></div>
     <div id="sdrFU" class="tabpane"></div>
     <div class="card">
       <div class="cardhead">
@@ -636,6 +643,7 @@ td .who { font-weight: 500; }
       <div class="tablewrap" id="aeCallsTable" style="margin-top:14px"></div>
       <p class="note" style="margin:10px 4px 0">A call counts for a lead if it goes to the lead's phone number within 14 days of the lead coming in. Second-day call = called again on a later day than the first call. “Never called” = leads marked “Not responsive” that got no call. Months with very few leads are left blank.</p>
     </div>
+    <div id="aeSTL" class="tabpane"></div>
     <div id="aeFU" class="tabpane"></div>
     <div class="card">
       <div class="cardhead">
@@ -762,7 +770,7 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 /* ================= STATE ================= */
 const DEFAULTS = {
   prefsVersion: 2,
-  fuMode: "pre", fuNoTouch: false, fuAndrew: true,
+  fuMode: "pre", fuNoTouch: false, fuAndrew: true, stlHours: "all", stlTexts: false, hours: {}, hoursOpen: false,
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
   sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", aeReasonWho: "all", sdrReasonWho: "all", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
@@ -1169,6 +1177,19 @@ function buildFU() {
     const chance = x.rest / 46; // same-width window anywhere else in the day
     if (x.hit >= 20 && x.hit > 5 * chance) FU.seq.set(o, { subjects: [...x.subj].filter(([k, n]) => k && n >= 0.1 * x.hit).map(([k]) => k), hit: x.hit, chance });
   }
+  // Each person's own activity times (calls, SMS, WhatsApp, emails they sent by hand), used to work out their working hours.
+  const act = new Map(), addAct = (u, t) => { if (!ROSTER_BY_NAME.has(u)) return; let a = act.get(u); if (!a) act.set(u, a = []); a.push(t); };
+  for (const c of CALLS) if (c.dir === "outbound") addAct(c.user, c.t);
+  for (const x of SMS) addAct(x.user, x.t);
+  if (waReady) for (const m of WA_MSGS) if (!m.in) { const u = waUser.get(m.s); if (u) addAct(u, m.t); }
+  const seen2 = new Set();
+  for (const rows of EMAIL_FILES.values()) for (const x of rows) {
+    if (x.dir !== "sent" || seen2.has(x.mid)) continue; seen2.add(x.mid);
+    const u = EMAIL_TO_NAME.get(x.oe); if (!u || x.subj.includes(FU_REMINDER)) continue;
+    const sq = FU.seq.get(u); if (sq && sq.subjects.some(k => x.subj.includes(k))) continue;  // could be the automatic series
+    addAct(u, x.t);
+  }
+  FU.act = act; HOURS_CACHE.clear();
 }
 function fuIsAuto(e, L, owner) {
   if (e.subj.includes(FU_REMINDER)) return true;
@@ -1232,6 +1253,74 @@ function fuAgg(recs) {
   a.median = a.n ? a.hands[a.n >> 1] : null;      // middle lead (upper middle when even)
   a.medianAll = a.n ? a.alls[a.n >> 1] : null;
   return a;
+}
+
+/* ---------- Working hours (on / off hours) ---------- */
+// Worked out from when each person actually calls, texts and emails; editable in the Speed to lead card (saved in this browser).
+const BROWSER_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch (e) { return "UTC"; } })();
+const TZ_CHOICES = [...new Set([BROWSER_TZ, "America/New_York", "America/Chicago", "America/Los_Angeles", "Europe/London", "Europe/Paris", "Asia/Beirut", "Asia/Dubai", "Asia/Manila", "UTC"])];
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HOURS_CACHE = new Map();
+const TZ_FMT = new Map();
+// Local weekday (0 = Mon) and minute of day of a UTC time in a time zone
+function zoned(t, tz) {
+  let f = TZ_FMT.get(tz);
+  if (!f) { f = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", minute: "numeric", hourCycle: "h23" }); TZ_FMT.set(tz, f); }
+  let wd = "", h = 0, m = 0;
+  for (const p of f.formatToParts(t)) { if (p.type === "weekday") wd = p.value; else if (p.type === "hour") h = +p.value; else if (p.type === "minute") m = +p.value; }
+  return { day: DAY_NAMES.indexOf(wd), min: h * 60 + m };
+}
+const hhmm = m => String(Math.floor(m / 60) % 24).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const toMin = s => { const m = /^(\d{1,2}):(\d{2})/.exec(s || ""); return m ? (+m[1] * 60 + +m[2]) % 1440 : null; };
+// Deduce hours in a time zone: the busy part of the day (5th–95th percentile of activity, measured from the quietest hour so night shifts work),
+// and the days with at least 20% of the busiest day's activity. Uses the last 120 days of activity.
+function deduceHours(name, tz) {
+  const key = name + "|" + tz; if (HOURS_CACHE.has(key)) return HOURS_CACHE.get(key);
+  const all = (FU && FU.act.get(name)) || [];
+  let res = null;
+  if (all.length >= 50) {
+    const last = Math.max(...all), ev = all.filter(t => t > last - 120 * 86400e3).map(t => zoned(t, tz));
+    const hist = new Array(24).fill(0); for (const e of ev) hist[Math.floor(e.min / 60)]++;
+    let quiet = 0; for (let h = 0; h < 24; h++) { let a = 0, b = 0; for (let k = 0; k < 3; k++) { a += hist[(h + k) % 24]; b += hist[(quiet + k) % 24]; } if (a < b) quiet = h; }
+    const rot = quiet * 60, mins = ev.map(e => (e.min - rot + 1440) % 1440).sort((a, b) => a - b);
+    const q = p => mins[Math.min(mins.length - 1, Math.floor(p * mins.length))];
+    const start = (Math.floor(q(0.05) / 30) * 30 + rot) % 1440, end = (Math.ceil(q(0.95) / 30) * 30 + rot) % 1440;
+    const dayCount = new Array(7).fill(0);
+    for (const e of ev) { let d = e.day; if (start > end && e.min < end) d = (d + 6) % 7; dayCount[d]++; }
+    const mx = Math.max(...dayCount);
+    res = { tz, start: hhmm(start), end: hhmm(end), days: dayCount.map((c, i) => c >= 0.2 * mx ? i : -1).filter(i => i >= 0), n: ev.length, since: new Date(Math.max(Math.min(...all), last - 120 * 86400e3)) };
+  }
+  HOURS_CACHE.set(key, res);
+  return res;
+}
+// The hours in use for a person: their saved edit, else deduced in their saved (or the browser's) time zone.
+function hoursFor(name) {
+  const o = (S.hours || {})[name];
+  if (o && o.edited) return Object.assign({ source: "edited" }, o);
+  const tz = (o && o.tz) || BROWSER_TZ, d = deduceHours(name, tz);
+  return d ? Object.assign({ source: "deduced" }, d) : { source: "none", tz, start: "09:00", end: "18:00", days: [0, 1, 2, 3, 4] };
+}
+function isOnHours(utc, h) {
+  const z = zoned(utc, h.tz), s = toMin(h.start), e = toMin(h.end), days = new Set(h.days);
+  if (s == null || e == null || s === e) return days.has(z.day);
+  if (s < e) return days.has(z.day) && z.min >= s && z.min < e;
+  return (z.min >= s && days.has(z.day)) || (z.min < e && days.has((z.day + 6) % 7));
+}
+// First touch by the owner after the lead came in (kinds: which channels count). null = none within the window.
+const STL_WINDOW_D = 7;
+function firstTouch(L, owner, kinds) {
+  const lo = L.utc - FU_LOOKBACK_MIN * 60e3, hi = L.utc + STL_WINDOW_D * 86400e3;
+  let best = null;
+  for (const k of ["p" + L.ph, "e" + L.email]) {
+    if (k.length < 2) continue;
+    for (const e of FU.T.get(k) || []) {
+      if (e.t < lo) continue; if (e.t > hi || (best != null && e.t >= best)) break;
+      if (e.u !== owner || !kinds.includes(e.k)) continue;
+      if (e.k === "email" && fuIsAuto(e, L, owner)) continue;
+      best = e.t;
+    }
+  }
+  return best;
 }
 
 /* IndexedDB: remembers the last files loaded (stays in this browser only) */
@@ -1995,6 +2084,7 @@ function renderSDR(base, r) {
   if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, ds, v => pct(v));
 
   renderCalls("sdr", "SDR", people, (L, nm) => L.sdr === nm, base, r);
+  renderSpeed("sdr", "SDR", base, r);
   renderFollowUp("sdr", "SDR", base, r);
   // Reasons: pick the SDR team or one SDR
   const who = names.has(S.sdrReasonWho) ? S.sdrReasonWho : "all";
@@ -2077,6 +2167,7 @@ function renderAE(base, r) {
   $("aeTable").innerHTML = html;
 
   renderCalls("ae", "AE", people, (L, nm) => scope.test(L) && L.ae === nm, base, r);
+  renderSpeed("ae", "AE", base, r);
   renderFollowUp("ae", "AE", base, r);
   // Reasons: pick All or one AE
   const who = names.has(S.aeReasonWho) ? S.aeReasonWho : "all";
@@ -2175,6 +2266,84 @@ function renderCalls(pre, role, people, pick, base, r) {
   }
   html += `<tr class="totalrow"><td>${team.label}</td><td>${fmtInt(people.reduce((t, pp) => t + (callsBy.get(pp.name) || 0), 0))}</td><td>${fmtInt(h.n)}</td>${cellPct(h.called, h.n)}<td>${dur(h.med)}</td>${cellPct(h.d2, h.called)}${cellPct(h.nrNever, h.nr)}<td></td></tr>`;
   $(pre + "CallsTable").innerHTML = html + `</tbody></table>`;
+}
+
+/* ---------- Speed to lead (SDRs: first call · AEs: first call or email) ---------- */
+const STL_BUCKETS = [
+  { label: "Within 5 min", max: 5, col: "--s3" }, { label: "5–30 min", max: 30, col: "--proj2" }, { label: "30 min – 2 h", max: 120, col: "--s4" },
+  { label: "2–24 h", max: 1440, col: "--s2" }, { label: "1–7 days", max: STL_WINDOW_D * 1440, col: "--bad" }, { label: `No touch in ${STL_WINDOW_D} days`, max: Infinity, col: "--neutral-bar" },
+];
+function hoursText(h) {
+  const d = h.days.slice().sort((a, b) => a - b);
+  const run = d.length > 2 && d.every((x, i) => i === 0 || x === d[i - 1] + 1);
+  return `${run ? DAY_NAMES[d[0]] + "–" + DAY_NAMES[d[d.length - 1]] : d.map(i => DAY_NAMES[i]).join(", ") || "no days"} ${h.start}–${h.end}${toMin(h.end) < toMin(h.start) ? " (overnight)" : ""}`;
+}
+function renderSpeed(pre, role, base, r) {
+  const host = $(pre + "STL");
+  if (!host.dataset.built) {
+    host.innerHTML = `<div class="sechead sub2"><div><h2>Speed to lead</h2><p id="${pre}StlSub"></p></div></div>
+    <div class="banner" id="${pre}StlBanner" hidden></div>
+    <div class="card" id="${pre}StlCard"><div class="cardhead"><div><h3>Time from new lead to first ${role === "SDR" ? "call" : "call or email"}</h3><div class="sub">Share of each person's leads, by how fast they first reached out</div></div>
+      <div class="controls"><span class="flabel">Lead came in</span><div class="seg" data-key="stlHours"><button data-v="all">Any time</button><button data-v="on">On hours</button><button data-v="off">Off hours</button></div>${role === "AE" ? `<label class="fuctl" style="font-size:12.5px;color:var(--ink-2);gap:6px"><input type="checkbox" data-fu="stlTexts"> Count texts too</label>` : ""}</div></div>
+      <div class="fubox" id="${pre}StlBox"><canvas id="${pre}StlChart" aria-label="Speed to lead"></canvas></div>
+      <div class="tablewrap" id="${pre}StlTable" style="margin-top:12px"></div><p class="note fuexp" id="${pre}StlNote"></p>
+      <details class="hrs" id="${pre}Hours"><summary>Working hours (used for On hours / Off hours)</summary><div id="${pre}HoursBody"></div></details></div>`;
+    host.dataset.built = "1";
+    $(pre + "Hours").addEventListener("toggle", e => { S.hoursOpen = e.target.open; savePrefs(); });
+  }
+  $(pre + "Hours").open = !!S.hoursOpen;
+  host.querySelectorAll('.seg[data-key="stlHours"] button').forEach(b => b.classList.toggle("on", b.dataset.v === S.stlHours));
+  const banner = $(pre + "StlBanner"), card = $(pre + "StlCard");
+  const hasEmail = FU && FU.cov.email;
+  if (!FU || !FU.cov.calls) { banner.hidden = false; card.hidden = true; banner.textContent = "Load the Aircall call history (and for AEs the email activity files) to see speed to lead."; $(pre + "StlSub").textContent = ""; destroy(pre + "Stl"); return; }
+  banner.hidden = role === "SDR" || hasEmail; card.hidden = false;
+  banner.textContent = "Email activity isn't loaded, so AE speed to lead only counts calls. Many AEs email first.";
+  const kinds = role === "SDR" ? ["call"] : (hasEmail ? ["call", "email"] : ["call"]).concat(S.stlTexts ? ["sms", "wa"] : []);
+  host.querySelectorAll('input[data-fu="stlTexts"]').forEach(i => { i.checked = !!S.stlTexts; });
+  const people = activePeople(role === "SDR" ? SDRS : AES);
+  const callStart = firstFullDay(FU.cov.calls.s), callEnd = nextDay(FU.cov.calls.e);
+  const recs = [];
+  for (const p of people) {
+    const h = hoursFor(p.name), mb = hasEmail && kinds.includes("email") ? FU.cov.mailbox.get(p.name) : null;
+    let start = callStart; if (mb && firstFullDay(mb.s) > start) start = firstFullDay(mb.s);
+    let end = callEnd; if (hasEmail && kinds.includes("email")) { const ee = nextDay(FU.cov.email.e); if (ee < end) end = ee; }
+    const endUtc = toUTCms(end, AIRTABLE_TZ_OFFSET_H);
+    p._stl = { h, start, noMailbox: kinds.includes("email") && !mb };
+    for (const L of base) {
+      if (leadOwner(L) !== p.name || (role === "SDR") !== !!L.sdr || !inR(L.created, r) || L.created < start || L.created >= end) continue;
+      if ((L.bucket === "closed" || L.bucket === "refund") && L.closedUtc != null && L.closedUtc - L.utc < FU_INSTANT_CLOSE_MIN * 60e3) continue;  // direct booking
+      const on = isOnHours(L.utc, h);
+      if (S.stlHours === "on" && !on) continue;
+      if (S.stlHours === "off" && on) continue;
+      const t = firstTouch(L, p.name, kinds);
+      if (t == null && endUtc - L.utc < STL_WINDOW_D * 86400e3) continue;  // too new to know
+      recs.push({ o: p.name, min: t == null ? null : Math.max(0, (t - L.utc) / 60e3) });
+    }
+  }
+  const agg = list => { const b = new Array(STL_BUCKETS.length).fill(0), mins = []; for (const x of list) { const i = x.min == null ? STL_BUCKETS.length - 1 : STL_BUCKETS.findIndex(k => x.min <= k.max); b[i]++; if (x.min != null) mins.push(x.min); } return { n: list.length, b, med: median(mins), touched: mins.length }; };
+  const rows = people.map(p => ({ p, a: agg(recs.filter(x => x.o === p.name)) })).filter(x => x.a.n);
+  const tot = agg(recs), team = role === "SDR" ? "SDR team" : "All AEs";
+  const hrsLbl = { all: "", on: " · leads that came in during the person's working hours", off: " · leads that came in outside the person's working hours" }[S.stlHours];
+  $(pre + "StlSub").textContent = role === "SDR" ? `SDR-led leads: time from the Airtable record being created to the SDR's first call${hrsLbl}.` : `AE-only leads: time from the Airtable record being created to the AE's first call or hand-sent email${S.stlTexts ? ", SMS or WhatsApp" : ""} (automatic emails don't count)${hrsLbl}.`;
+  if (!rows.length) { destroy(pre + "Stl"); $(pre + "StlBox").style.height = "0"; $(pre + "StlTable").innerHTML = `<p class="note">No leads in these dates and hours.</p>`; }
+  else fuStackChart(pre + "Stl", rows.map(x => x.p.name).concat(team), STL_BUCKETS.map((_, j) => rows.map(x => x.a).concat(tot).map(a => ({ n: a.b[j], pct: a.b[j] / a.n * 100 }))), STL_BUCKETS.map(b => b.label), STL_BUCKETS.map(b => cssVar(b.col)), false);
+  const c = (x, n) => `<td${n < SMALL_SAMPLE ? ' class="small"' : ""}>${n ? pct(x / n, 0) : "—"}</td>`;
+  if (rows.length) $(pre + "StlTable").innerHTML = `<table class="futable"><thead><tr><th>${role}</th><th>Leads</th><th>Median time to<br>first ${role === "SDR" ? "call" : "touch"}</th><th>Within<br>5 min</th><th>Within<br>1 hour</th><th>No touch in<br>${STL_WINDOW_D} days</th><th>Working hours used</th></tr></thead><tbody>` +
+    rows.map(({ p, a }) => { const w5 = a.b[0], w60 = recs.filter(x => x.o === p.name && x.min != null && x.min <= 60).length; return `<tr><td><span class="who">${esc(p.name)}</span><span class="chip">${p.desk}</span></td><td>${fmtInt(a.n)}</td><td>${dur(a.med)}</td>${c(w5, a.n)}${c(w60, a.n)}${c(a.b[STL_BUCKETS.length - 1], a.n)}<td class="small" style="text-align:left">${esc(hoursText(p._stl.h))} <span class="n">${esc(p._stl.h.tz)}${p._stl.h.source === "edited" ? " · edited" : p._stl.h.source === "none" ? " · default" : ""}</span></td></tr>`; }).join("") +
+    `<tr class="totalrow"><td>${team}</td><td>${fmtInt(tot.n)}</td><td>${dur(tot.med)}</td>${c(tot.b[0], tot.n)}${c(recs.filter(x => x.min != null && x.min <= 60).length, tot.n)}${c(tot.b[STL_BUCKETS.length - 1], tot.n)}<td></td></tr></tbody></table>`;
+  const starts = [...new Set(people.map(p => p._stl && fmtDate(p._stl.start > r.start ? p._stl.start : r.start)).filter(Boolean))];
+  $(pre + "StlNote").innerHTML = `<b>Clock time, not business hours.</b> A lead that comes in at 11pm and gets called at 9am counts 10 hours. Use <b>On hours / Off hours</b> to split leads by whether they came in during that person's working hours (set below). ` +
+    `Leads of any status, created ${starts.length === 1 ? "from " + starts[0] : "from " + starts.join(" or ")} (when ${role === "SDR" ? "the Aircall file" : "the Aircall file and that AE's mailbox"} start${role === "SDR" ? "s" : ""}), inside the date range, with every filter above. A touch only counts if it's the owner's own${role === "SDR" ? " call" : S.stlTexts ? " call, email or text" : " call or email (tick “Count texts too” to include SMS and WhatsApp; some AEs text first)"} to the lead's phone or email. Leads newer than ${STL_WINDOW_D} days with no touch yet, and deals that closed within ${FU_INSTANT_CLOSE_MIN} min of coming in (direct bookings), are left out. Median = the middle lead among those that got a touch.`;
+  // Working hours editor
+  const tzOpts = tz => [...new Set([tz, ...TZ_CHOICES])].map(z => `<option value="${esc(z)}"${z === tz ? " selected" : ""}>${esc(z.replace("_", " "))}</option>`).join("");
+  $(pre + "HoursBody").innerHTML = `<p class="note" style="margin:8px 0">Worked out from when each person actually calls, texts and emails (the busy part of their day over the last 120 days). Change the time zone to read them in that person's local time. Edits are saved in this browser. Times are in the time zone on each row.</p>
+    <div class="tablewrap"><table><thead><tr><th>Person</th><th>Time zone</th><th>Days</th><th>Start</th><th>End</th><th></th></tr></thead><tbody>` +
+    people.map(p => { const h = hoursFor(p.name), d = new Set(h.days), nm = esc(p.name); const ded = deduceHours(p.name, h.tz);
+      return `<tr><td style="text-align:left"><span class="who">${nm}</span><div class="note">${h.source === "edited" ? "Edited" : ded ? `From ${fmtInt(ded.n)} touches since ${fmtDate(ded.since)}` : "Not enough activity; using 09:00–18:00"}</div></td>
+      <td style="text-align:left"><select data-hrs="${nm}|tz">${tzOpts(h.tz)}</select></td>
+      <td class="days" style="text-align:left">${DAY_NAMES.map((dn, i) => `<label>${dn}<input type="checkbox" data-hrs="${nm}|day${i}"${d.has(i) ? " checked" : ""}></label>`).join("")}</td>
+      <td><input type="time" step="1800" data-hrs="${nm}|start" value="${h.start}"></td><td><input type="time" step="1800" data-hrs="${nm}|end" value="${h.end}"></td>
+      <td>${h.source === "edited" ? `<button class="linkbtn" data-hrsreset="${nm}">Reset</button>` : ""}</td></tr>`; }).join("") + `</tbody></table></div>`;
 }
 
 /* ---------- Follow-up before disqualification (Overview, SDRs, AEs) ---------- */
@@ -2420,6 +2589,18 @@ document.addEventListener("change", e => {
     if (k === "date" && v === "custom" && !S.from) { const n = new Date(); S.from = ymd(new Date(n.getFullYear(), 0, 1)); S.to = ymd(n); }
     savePrefs(); render(); return;
   }
+  const hr = e.target.closest("[data-hrs]");
+  if (hr) {
+    const [name, field] = hr.dataset.hrs.split("|"), cur = hoursFor(name), all = Object.assign({}, S.hours);
+    if (field === "tz" && cur.source !== "edited") all[name] = { tz: hr.value };
+    else {
+      const h = { tz: cur.tz, start: cur.start, end: cur.end, days: cur.days.slice(), edited: true };
+      if (field === "tz") h.tz = hr.value; else if (field === "start" || field === "end") { if (hr.value) h[field] = hr.value; }
+      else { const i = +field.slice(3); h.days = hr.checked ? [...new Set([...h.days, i])] : h.days.filter(x => x !== i); }
+      all[name] = h;
+    }
+    S.hours = all; savePrefs(); render(); return;
+  }
   const fu = e.target.closest("input[data-fu]");
   if (fu) { S[fu.dataset.fu] = fu.checked; savePrefs(); render(); return; }
   const cb = e.target.closest("input[data-person]");
@@ -2437,6 +2618,8 @@ $("dataBtn").addEventListener("click", e => {
 });
 document.addEventListener("click", async e => {
   if (e.target.closest("#dataLoad")) { $("fileInput").click(); return; }
+  const hrr = e.target.closest("[data-hrsreset]");
+  if (hrr) { const all = Object.assign({}, S.hours); const tz = all[hrr.dataset.hrsreset] && all[hrr.dataset.hrsreset].tz; if (tz) all[hrr.dataset.hrsreset] = { tz }; else delete all[hrr.dataset.hrsreset]; S.hours = all; savePrefs(); render(); return; }
   const rm = e.target.closest("[data-rmemail]");
   if (rm) { e.stopPropagation(); const nm = rm.dataset.rmemail; EMAIL_FILES.delete(nm); await idbDel("email:" + nm); buildFU(); render(); renderDataPop(); return; }
   if (!$("dataPop").hidden && !e.target.closest("#dataField")) { $("dataPop").hidden = true; $("dataBtn").setAttribute("aria-expanded", "false"); }

@@ -73,6 +73,12 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - Chart: last 24 full months, each month vs the same month last year + 3-month average; projected months in green (Projection dropdown: Off / 3 / 6 / 12 months). Projected growth = projected revenue (seasonality included) ÷ same months last year.
 - Uses all leads (B2B tags are incomplete before Sep 2025); every other filter applies.
 
+## Speed to lead (SDRs tab, AEs tab)
+- SDRs: SDR-led leads, Airtable record created → the SDR's first call. AEs: AE-only leads → the AE's first call or hand-sent email ("Count texts too" adds SMS/WhatsApp; automatic emails never count).
+- Clock time, not business hours. Buckets: within 5 min / 5–30 min / 30 min–2 h / 2–24 h / 1–7 days / no touch in 7 days. Table: median, within 5 min, within 1 h.
+- Leads of any status, from when the call file (and, for AEs, that AE's mailbox) starts. Leads under 7 days old with no touch, and deals closed within 1h of coming in, are left out.
+- On hours / Off hours: whether the lead came in during the owner's working hours. Working hours are worked out from each person's own activity (busy part of the day = 5th–95th percentile, last 120 days; days with 20%+ of the busiest day), shown in a chosen time zone (default: the browser's), and editable per person (saved in the browser).
+
 ## Follow-up before disqualification (Overview, SDRs, AEs)
 - Leads: Sales status Disqualified + reason Not responsive, created in the date range. Owner = SDR if set, else the AE. Every top filter applies (B2B, desk, people, view on Overview).
 - A touch = the owner's own outbound call (Aircall), SMS (Aircall), WhatsApp (Respond.io) or sent email, to the lead's phone (last 9 digits) or email, from 10 min before the lead came in until the Airtable export, or until the same person sent a new request (>24h later).
