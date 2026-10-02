@@ -74,7 +74,8 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - Uses all leads (B2B tags are incomplete before Sep 2025); every other filter applies.
 
 ## Add projections (Lead→Deal %, Meeting Done %)
-- Toggle "Add projections" in the Overview, SDRs and AEs headers (one shared setting). Green +x numbers on tiles, tables and the team/total trend line (dashed green).
+- Toggle "Add projections" in the Overview, SDRs and AEs headers (one shared setting). Tiles: the big number becomes the projection (green, with *), "Actual x%" below, "+x pts as recent leads mature". Tables get green +x; team/total trend lines get a dashed green projection. Definition sits in a small "* Projections definition" expander.
+- Non-Response: each still-open lead adds the gap between leads its age and leads 45–90 days old.
 - Lead→Deal: each lead not yet closed adds the chance a lead of its age (days since it came in, as of the file's last day) still closes within 120 days, from leads created 4–10 months ago. Backtest: April judged 2 days after month end 14.3% → projected 18.7% (actual 19.2%); May 17.0% → 20.9% (actual 20.3%).
 - Meeting Done (no meeting date in the export): each lead without a meeting adds the gap between the meeting rate of leads its age and leads 30–60 days old.
 - Previous-period comparisons use projected numbers on both sides (same-age, apples to apples).
