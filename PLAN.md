@@ -75,7 +75,7 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 
 ## Add projections (Lead→Deal %, Meeting Done %)
 - Toggle "Add projections" in the Overview, SDRs and AEs headers (one shared setting). Tiles: the big number becomes the projection (green, with *), "Actual x%" below, "+x pts as recent leads mature". Tables get green +x; team/total trend lines get a dashed green projection. Definition sits in a small "* Projections definition" expander.
-- Non-Response: each still-open lead adds the gap between leads its age and leads 45–90 days old.
+- Non-Response: each still-open lead adds the chance its current status ends "not responsive" (`NR_STATUS_RATE`, SDR vs AE). Calibrated from the Sep 11 → Oct 2 exports; backtest on August leads: SDR projected 42–44% vs 37–43% on Oct 2 (still rising), AE 24–28% vs 19–21% (still rising). The age-based method under-projected SDRs (31% vs 39.7%) because SDR non-response has been rising.
 - Lead→Deal: each lead not yet closed adds the chance a lead of its age (days since it came in, as of the file's last day) still closes within 120 days, from leads created 4–10 months ago. Backtest: April judged 2 days after month end 14.3% → projected 18.7% (actual 19.2%); May 17.0% → 20.9% (actual 20.3%).
 - Meeting Done (no meeting date in the export): each lead without a meeting adds the gap between the meeting rate of leads its age and leads 30–60 days old.
 - Previous-period comparisons use projected numbers on both sides (same-age, apples to apples).

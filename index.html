@@ -1424,7 +1424,14 @@ function emptyAcc() { return { n: 0, md: 0, cl: 0, nr: 0, aer: 0, mdc: 0, deals:
    Meeting Done (no meeting date in the export): meeting rate of leads of each age today vs leads 30–60 days old (recent, so a
    change in the meeting rate over the year doesn't skew it). */
 const MAT_H = 120;
-const MAT_NR_BANDS = [0, 3, 7, 14, 30, 45];  // "not responsive" settles by ~45 days; leads 45–90 days old are the benchmark
+// Non-Response projection: chance an open lead ends "Disqualified · Not responsive", by its current status.
+// Calibrated from the Sep 11 → Oct 2, 2026 Airtable exports (open leads on Sep 11 that were settled by Oct 2).
+// Refresh with a newer pair of exports when needed. Statuses not listed use NR_STATUS_DEFAULT.
+const NR_STATUS_RATE = {
+  SDR: { "non respondant": 0.74, "cold": 0.56, "qualified_sdr": 0.33, "qualified sdr": 0.33, "warm": 0.04, "hot": 0.0 },
+  AE:  { "non respondant": 0.73, "": 0.61, "pending to quote": 0.44, "cold": 0.01, "warm": 0.02, "hot": 0.0 },
+};
+const NR_STATUS_DEFAULT = 0.35;
 const MAT_BANDS = [0, 3, 7, 14, 30];   // meeting rate settles within ~30 days; leads 30–60 days old are the benchmark
 let MAT = null, MAT_KEY = "";
 function maturityModel() {
@@ -1446,11 +1453,10 @@ function maturityModel() {
     return rate.map((r, i) => i === rate.length - 1 || !elig[i] ? 0 : Math.max(0, Math.min(1, (rm - r) * n[i] / elig[i])));
   }
   const mdAdd = crossAdd(MAT_BANDS, 60, L => L.md, () => true);
-  const nrAdd = crossAdd(MAT_NR_BANDS, 90, L => L.bucket === "nonresp", L => L.bucket === "open");
-  MAT = { q, mdAdd, nrAdd, hist: hist.length,
+  MAT = { q, mdAdd, hist: hist.length,
     cl: L => { if (isClosed(L)) return 0; const a = age(L); return a >= 0 && a < MAT_H ? q[a] : 0; },
     md: L => { if (L.md) return 0; const a = age(L); return a >= 0 ? mdAdd[bandOf(MAT_BANDS, a)] : 0; },
-    nr: L => { if (L.bucket !== "open") return 0; const a = age(L); return a >= 0 ? nrAdd[bandOf(MAT_NR_BANDS, a)] : 0; } };
+    nr: L => { if (L.bucket !== "open") return 0; const t = NR_STATUS_RATE[L.sdr ? "SDR" : "AE"], st = String(L.status || "").trim().toLowerCase(); return t[st] != null ? t[st] : NR_STATUS_DEFAULT; } };
   MAT_KEY = key;
   return MAT;
 }
@@ -1936,7 +1942,7 @@ function renderDataPop() {
 }
 function matNote() {
   if (MAT.hist < 200) return `<b>Projections on</b>, but there isn't enough older history in the file yet (needs leads created 4–10 months ago), so the green numbers will be small or missing.`;
-  return `Green numbers with * are projections: where Lead→Deal %, Meeting Done % and Non-Response % should land once recent leads have had time to mature. The actual number is underneath. Lead→Deal: each lead not yet closed adds the chance a lead of its age still closes (from ${fmtInt(MAT.hist)} leads created 4–10 months ago, followed for ${MAT_H} days). Meeting Done: each lead without a meeting adds the gap between leads its age and leads 30–60 days old. Non-Response: each still-open lead adds the gap between leads its age and leads 45–90 days old. The ▲▼ compares this period's projection with the previous period's projection (once a period has matured, its projection equals its actual). Estimates, not results.`;
+  return `Green numbers with * are projections: where Lead→Deal %, Meeting Done % and Non-Response % should land once recent leads have had time to mature. The actual number is underneath. Lead→Deal: each lead not yet closed adds the chance a lead of its age still closes (from ${fmtInt(MAT.hist)} leads created 4–10 months ago, followed for ${MAT_H} days). Meeting Done: each lead without a meeting adds the gap between leads its age and leads 30–60 days old. Non-Response: each still-open lead adds the chance its current status ends in “not responsive” (e.g. Non respondant 74%, Cold 56% for SDR leads, Warm/Hot under 5%), measured from the Sep 11 → Oct 2 exports. The ▲▼ compares this period's projection with the previous period's projection (once a period has matured, its projection equals its actual). Estimates, not results.`;
 }
 function rangeText(r) { return `${fmtDate(r.start)} – ${fmtDate(new Date(r.end - 86400e3))}`; }
 
