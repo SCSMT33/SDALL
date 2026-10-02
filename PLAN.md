@@ -73,6 +73,12 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - Chart: last 24 full months, each month vs the same month last year + 3-month average; projected months in green (Projection dropdown: Off / 3 / 6 / 12 months). Projected growth = projected revenue (seasonality included) ÷ same months last year.
 - Uses all leads (B2B tags are incomplete before Sep 2025); every other filter applies.
 
+## Add projections (Lead→Deal %, Meeting Done %)
+- Toggle "Add projections" in the Overview, SDRs and AEs headers (one shared setting). Green +x numbers on tiles, tables and the team/total trend line (dashed green).
+- Lead→Deal: each lead not yet closed adds the chance a lead of its age (days since it came in, as of the file's last day) still closes within 120 days, from leads created 4–10 months ago. Backtest: April judged 2 days after month end 14.3% → projected 18.7% (actual 19.2%); May 17.0% → 20.9% (actual 20.3%).
+- Meeting Done (no meeting date in the export): each lead without a meeting adds the gap between the meeting rate of leads its age and leads 30–60 days old.
+- Previous-period comparisons use projected numbers on both sides (same-age, apples to apples).
+
 ## Speed to lead (SDRs tab, AEs tab)
 - SDRs: SDR-led leads, Airtable record created → the SDR's first call. AEs: AE-only leads → the AE's first call or hand-sent email ("Count texts too" adds SMS/WhatsApp; automatic emails never count).
 - Own switches: Leads B2B / B2C / All (default B2B; overrides the top Leads filter for this chart) and, on the AEs tab, Include Andrew.

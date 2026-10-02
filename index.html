@@ -378,6 +378,9 @@ td .who { font-weight: 500; }
 .hrs select, .hrs input[type=time] { font-size: 12px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--ink); }
 .hrs .days label { display: inline-flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--muted); margin-right: 2px; }
 .hrs .days input { margin: 0; accent-color: var(--accent); }
+.matlbl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; margin-left: auto; }
+.matlbl input { accent-color: var(--proj1); margin: 0; width: 15px; height: 15px; }
+.projtag { color: var(--proj1); font-weight: 600; font-size: 11.5px; margin-left: 4px; }
 .checkdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -477,8 +480,10 @@ td .who { font-weight: 500; }
         <h2>Top numbers</h2>
         <p id="ovRangeNote"></p>
       </div>
+      <label class="matlbl"><input type="checkbox" data-fu="matProj"> Add projections</label>
     </div>
     <div class="tiles" id="ovTiles"></div>
+    <p class="note" id="ovMatNote" hidden></p>
     <div class="card">
       <div class="cardhead">
         <div>
@@ -538,8 +543,10 @@ td .who { font-weight: 500; }
   <section class="tabpane" id="pane-sdr" hidden>
     <div class="sechead">
       <div><h2>SDR team</h2><p>SDR-led leads (the lead has an SDR Owner). Leads created in the date range.</p></div>
+      <label class="matlbl"><input type="checkbox" data-fu="matProj"> Add projections</label>
     </div>
     <div class="tiles" id="sdrTiles"></div>
+    <p class="note" id="sdrMatNote" hidden></p>
     <div class="card">
       <div class="cardhead">
         <div><h3 id="sdrChartTitle"></h3><div class="sub">One line per SDR, by lead creation date. Click a name to hide or show its line.</div></div>
@@ -597,11 +604,13 @@ td .who { font-weight: 500; }
   <section class="tabpane" id="pane-ae" hidden>
     <div class="sechead">
       <div><h2>Account Executives</h2><p id="aeScopeNote"></p></div>
+      <label class="matlbl"><input type="checkbox" data-fu="matProj"> Add projections</label>
       <div class="field"><label class="flabel" for="fAeScope">Leads</label>
         <select class="select" id="fAeScope" data-key="aeScope"><option value="direct">AE-direct leads</option><option value="sdr">From SDRs</option><option value="all">All leads</option></select>
       </div>
     </div>
     <div class="tiles" id="aeTiles"></div>
+    <p class="note" id="aeMatNote" hidden></p>
     <div class="card">
       <div class="cardhead">
         <div><h3 id="aeChartTitle"></h3><div class="sub" id="aeChartSub"></div></div>
@@ -770,7 +779,7 @@ const OPEN_STATUSES = ["pending", "pending to quote", "pending to contact", "qua
 /* ================= STATE ================= */
 const DEFAULTS = {
   prefsVersion: 2,
-  fuMode: "pre", fuNoTouch: false, fuAndrew: true, stlHours: "all", stlTexts: false, stlLeads: "b2b", stlAndrew: true, hours: {}, hoursOpen: false,
+  fuMode: "pre", fuNoTouch: false, fuAndrew: true, matProj: false, stlHours: "all", stlTexts: false, stlLeads: "b2b", stlAndrew: true, hours: {}, hoursOpen: false,
   tab: "overview", view: "all", date: "year", from: "", to: "", b2b: true, desk: "all",
   refunds: false, repeat: true, group: "month", kpi: "rev", split: "none",
   sdrMetric: "md", aeMetric: "rev", growthProj: "3", sdrCallMetric: "cov", aeCallMetric: "cov", aeScope: "direct", sdrReason: "lost", aeReason: "lost", aeReasonWho: "all", sdrReasonWho: "all", yoy: false, excluded: [], focusSDR: null, focusAE: null, hidden: { SDR: [], AE: [] }, expanded: {},
@@ -1400,10 +1409,55 @@ function viewFilter(leads, view) {
   if (view === "ae") return leads.filter(L => !L.sdr);
   return leads;
 }
-function emptyAcc() { return { n: 0, md: 0, cl: 0, nr: 0, aer: 0, mdc: 0, deals: 0, rev: 0, repRev: 0 }; }
+function emptyAcc() { return { n: 0, md: 0, cl: 0, nr: 0, aer: 0, mdc: 0, deals: 0, rev: 0, repRev: 0, pcl: 0, pmd: 0 }; }
+/* ---------- Maturity projection (Lead→Deal %, Meeting Done %) ----------
+   Recent leads haven't had time to close or meet yet. With "Add projections" on, each lead adds the chance that a lead
+   of its age (days since it came in, as of the last day in the file) still closes / has its meeting.
+   Lead→Deal: from leads created 4–10 months ago, followed for MAT_H days: of those not closed by day a, the share that closed later.
+   Meeting Done (no meeting date in the export): meeting rate of leads of each age today vs leads 30–60 days old (recent, so a
+   change in the meeting rate over the year doesn't skew it). */
+const MAT_H = 120;
+const MAT_BANDS = [0, 3, 7, 14, 30];   // meeting rate settles within ~30 days; leads 30–60 days old are the benchmark
+let MAT = null, MAT_KEY = "";
+function maturityModel() {
+  const key = [LEADS.length, S.b2b, S.desk, S.repeat, S.refunds, S.excluded.join(",")].join("|");
+  if (MAT && MAT_KEY === key) return MAT;
+  const pool = baseLeads().filter(L => !FULL_START || L.created >= FULL_START), end = dataEndDate(), DAY = 86400e3;
+  const age = L => Math.floor((end - L.created) / DAY);
+  // Lead→Deal hazard by age
+  const hist = pool.filter(L => { const a = age(L); return a >= MAT_H && a < MAT_H + 180; }).map(L => isClosed(L) && L.closed ? Math.max(0, (L.closed - L.created) / DAY) : Infinity);
+  const q = [];
+  for (let a = 0; a < MAT_H; a++) { let open = 0, later = 0; for (const d of hist) if (d > a) { open++; if (d <= MAT_H) later++; } q.push(open ? later / open : 0); }
+  // Meeting Done by age band
+  const band = a => { let b = 0; while (b + 1 < MAT_BANDS.length && a >= MAT_BANDS[b + 1]) b++; return b; };
+  const n = new Array(MAT_BANDS.length).fill(0), m = n.slice();
+  for (const L of pool) { const a = age(L); if (a < 0 || a >= 60) continue; const b = band(a); n[b]++; if (L.md) m[b]++; }
+  const rate = n.map((x, i) => x ? m[i] / x : 0), rm = rate[rate.length - 1];
+  const mdAdd = rate.map((r, i) => i === rate.length - 1 || r >= 1 ? 0 : Math.max(0, (rm - r) / (1 - r)));
+  MAT = { q, mdAdd, hist: hist.length, mdN: n[n.length - 1],
+    cl: L => { if (isClosed(L)) return 0; const a = age(L); return a >= 0 && a < MAT_H ? q[a] : 0; },
+    md: L => { if (L.md) return 0; const a = age(L); return a >= 0 ? mdAdd[band(a)] : 0; } };
+  MAT_KEY = key;
+  return MAT;
+}
+const PROJ_KEYS = new Set(["l2d", "md"]);
+// Projected values for a line: only where the projection adds something, joined to the last actual point before it.
+function projLine(accs, k, actual) {
+  const pv = accs.map(a => projVal(k, a)), out = accs.map(() => null);
+  pv.forEach((v, i) => { if (v != null && actual[i] != null && v - actual[i] >= 0.0005) { out[i] = v; if (i > 0 && out[i - 1] == null && actual[i - 1] != null) out[i - 1] = actual[i - 1]; } });
+  return out.some((v, i) => v != null && actual[i] != null && v !== actual[i]) ? out : null;
+}
+function projDataset(label, data) {
+  const c = cssVar("--proj1");
+  return { label: label + " · projected", data, borderColor: c, backgroundColor: c, borderDash: [6, 4], borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: c, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: false, fill: false, order: 0, projected: true };
+}
+const projOn = k => S.matProj && PROJ_KEYS.has(k);
+function projVal(k, a) { if (!a || !a.n) return null; return k === "l2d" ? (a.cl + a.pcl) / a.n : k === "md" ? (a.md + a.pmd) / a.n : null; }
+const projTag = (extra, den) => den && extra / den >= 0.0005 ? `<span class="projtag" title="Projected, as recent leads mature">+${(extra / den * 100).toFixed(1)}</span>` : "";
 function addCohort(a, L) {
   if (FULL_START && L.created < FULL_START) return;
   a.n++; if (L.md) a.md++;
+  if (S.matProj && MAT) { a.pcl += MAT.cl(L); a.pmd += MAT.md(L); }
   const c = isClosed(L);
   if (c) a.cl++;
   if (L.md && c) a.mdc++;
@@ -1671,16 +1725,23 @@ function sparkVals(leads, k, r) {
   return ser ? ser.map(a => METRICS[k].val(a)) : [];
 }
 function tileHTML(k, a, prev, r, opts = {}) {
-  const m = METRICS[k], v = m.val(a);
+  const m = METRICS[k], v = m.val(a), pj = projOn(k);
+  const pv = pj ? projVal(k, a) : null, ppv = pj && prev ? projVal(k, prev) : null;
   const small = m.basis === "created" && a.n < SMALL_SAMPLE;
+  const projLine = pj && pv != null ? `<div class="proj"><i></i>Projected <b>${pct(pv)}</b> · +${((pv - v) * 100).toFixed(1)} pts as recent leads mature</div>` : "";
   const tag = m.basis === "close" ? "by close date" : "by lead date";
   const el = opts.selectable ? "button" : "div";
   return `<${el} class="tile${opts.sel ? " sel" : ""}"${opts.selectable ? ` data-kpi="${k}" aria-pressed="${!!opts.sel}"` : ""}>
     <div class="tl">${esc(opts.label || m.label)}<em>${tag}</em></div>
     <div class="tv"${small ? ' style="color:var(--muted)" title="Small sample"' : ""}>${fmtMetric(k, v)}</div>
-    <div class="tc">${m.cap(a)}${small ? " · small sample" : ""}</div>${opts.extra || ""}
-    <div class="trow">${r.prev ? deltaHTML(k, v, prev ? m.val(prev) : null, r.prevLabel) : `<span class="delta flat">${S.date === "all" ? "All time" : "No comparison"}</span>`}${opts.spark ? sparkSVG(opts.spark) : ""}</div>
+    <div class="tc">${m.cap(a)}${small ? " · small sample" : ""}</div>${opts.extra || ""}${projLine}
+    <div class="trow">${r.prev ? deltaHTML(k, pj ? pv : v, prev ? (pj ? ppv : m.val(prev)) : null, r.prevLabel + (pj ? " (both projected)" : "")) : `<span class="delta flat">${S.date === "all" ? "All time" : "No comparison"}</span>`}${opts.spark ? sparkSVG(opts.spark) : ""}</div>
   </${el}>`;
+}
+function cellPctP(num, den, extra) {
+  if (!den) return `<td class="small">—</td>`;
+  const small = den < SMALL_SAMPLE;
+  return `<td${small ? ' class="small" title="Small sample"' : ""}>${pct(num / den)}${S.matProj ? projTag(extra, den) : ""}<span class="n">${fmtInt(num)}/${fmtInt(den)}</span></td>`;
 }
 function cellPct(num, den) {
   if (!den) return `<td class="small">—</td>`;
@@ -1782,6 +1843,7 @@ function peopleTrend(id, labels, rows, team, fmt, focus, focusAttr) {
     return { label: p.name, data, borderColor: c, backgroundColor: c, borderWidth: faded ? 1.5 : (focus ? 3 : 2), pointRadius: many ? 0 : 3, pointHoverRadius: 5, pointBorderColor: surface, pointBorderWidth: 2, tension: 0.15, spanGaps: true, order: faded ? 3 : 2, hidden: hidden.has(p.name) };
   });
   if (team) ds.push({ label: team.label, data: team.data, borderColor: ink, backgroundColor: ink, borderWidth: 3, pointRadius: 0, pointHoverRadius: 4, tension: 0.15, spanGaps: true, order: 1 });
+  if (team && team.proj) ds.push(projDataset(team.label, team.proj));
   const anyHidden = rows.some(({ p }) => hidden.has(p.name));
   $(id + "Legend").innerHTML = rows.map(({ p }) => `<button class="lg${hidden.has(p.name) ? " off" : ""}" data-toggle-person="${role}|${esc(p.name)}" aria-pressed="${!hidden.has(p.name)}" title="${hidden.has(p.name) ? "Show" : "Hide"} ${esc(p.name)}"><i style="background:${personColor(p)}"></i>${esc(p.name)}</button>`).join("") +
     (team ? `<button class="lg" data-toggle-all="${role}" data-names="${esc(rows.map(r => r.p.name).join("|"))}" title="${anyHidden ? "Show everyone" : "Hide everyone except the team line"}"><i class="teamkey" style="background:${ink}"></i>${esc(team.label)}<span class="lgnote">${anyHidden ? "show all" : "hide all"}</span></button>` : "") + `<span class="lgnote" style="margin-left:auto">Hover a dot for one person · hover a date for everyone</span>`;
@@ -1804,6 +1866,9 @@ function render() {
   $("fxBody").innerHTML = `<span>Latest month (${lastM}):</span>` + Object.entries(FX_MONTHLY[lastM]).map(([c, v]) => `<span>1 ${c} = $${v.toFixed(3)}</span>`).join("") +
     Object.entries(FX_PEGGED).filter(([c]) => c !== "USD").map(([c, v]) => `<span>1 ${c} = $${v} (pegged)</span>`).join("") +
     (UNKNOWN_FX.size ? `<span style="color:var(--bad)">No rate for ${esc([...UNKNOWN_FX].join(", "))}. Counted as USD until a rate is added.</span>` : "");
+  MAT = S.matProj ? maturityModel() : MAT;
+  document.querySelectorAll('input[data-fu="matProj"]').forEach(i => { i.checked = !!S.matProj; });
+  for (const id of ["ovMatNote", "sdrMatNote", "aeMatNote"]) if ($(id)) { $(id).hidden = !S.matProj; $(id).innerHTML = S.matProj ? matNote() : ""; }
   const r = getRange();
   const base = baseLeads();
   if (S.tab === "overview") renderOverview(base, r);
@@ -1854,6 +1919,10 @@ function renderDataPop() {
     Object.keys(KINDS).map(slot).join("") +
     `<p class="note" style="margin:8px 6px 2px">Drop files anywhere on the page. The dashboard works out which export each file is. A new file of the same type replaces the old one; email files add up (one per month). Everything stays in this browser.</p>`;
 }
+function matNote() {
+  if (MAT.hist < 200) return `<b>Projections on</b>, but there isn't enough older history in the file yet (needs leads created 4–10 months ago), so the green numbers will be small or missing.`;
+  return `<b>Projections on:</b> green numbers add what Lead→Deal % and Meeting Done % should still gain as recent leads mature, so a month that just ended can be compared with older months. Lead→Deal: each open lead adds the chance a lead of its age still closes, from ${fmtInt(MAT.hist)} leads created 4–10 months ago and followed for ${MAT_H} days. Meeting Done: the export has no meeting date, so each lead without a meeting adds the gap between the meeting rate of leads its age today and leads 30–60 days old (meetings mostly happen within a month). Comparisons with the previous period use projected numbers on both sides. Estimates, not results.`;
+}
 function rangeText(r) { return `${fmtDate(r.start)} – ${fmtDate(new Date(r.end - 86400e3))}`; }
 
 /* ---------- Overview ---------- */
@@ -1893,6 +1962,7 @@ function renderOverview(base, r) {
       ? { label: o === "All" ? m.label : o, data, backgroundColor: col, borderColor: cssVar("--surface"), borderWidth: S.split === "none" ? 0 : { top: 2 }, borderRadius: 4, borderSkipped: "start", maxBarThickness: 24, stack: "s" }
       : { label: o === "All" ? m.label : o, data, borderColor: col, backgroundColor: withAlpha(col, 0.10), fill: S.split === "none", borderWidth: 2, pointRadius: buckets.length > 40 ? 0 : 3, pointHoverRadius: 5, pointBackgroundColor: col, pointBorderColor: cssVar("--surface"), pointBorderWidth: 2, tension: 0.25, spanGaps: true };
   });
+  if (!isRev && projOn(k)) order.filter(o => ser.has(o)).forEach(o => { const pl = projLine(ser.get(o), k, ser.get(o).map(acc => m.val(acc))); if (pl) datasets.push(projDataset(o === "All" ? m.label : o, pl)); });
   // Projected revenue (green), stacked on top of actuals, for the current and future months.
   let P = null;
   if (isRev && S.group !== "week" && r.end > today0) {
@@ -2063,10 +2133,10 @@ function renderSDR(base, r) {
   for (const { s, a: x } of rows) {
     html += `<tr class="person${S.focusSDR === s.name ? " focus" : ""}" data-sdr="${esc(s.name)}" tabindex="0">
       <td><span class="who">${esc(s.name)}</span></td><td class="small">${s.desk}</td><td>${fmtInt(x.n)}</td>
-      ${cellPct(x.md, x.n)}${cellPct(x.cl, x.n)}${cellPct(x.nr, x.n)}${cellPct(x.aer, x.n)}
+      ${cellPctP(x.md, x.n, x.pmd)}${cellPctP(x.cl, x.n, x.pcl)}${cellPct(x.nr, x.n)}${cellPct(x.aer, x.n)}
       <td>${money(x.rev)}</td><td>${money(x.deals ? x.rev / x.deals : null)}</td></tr>`;
   }
-  html += `<tr class="totalrow"><td>Team</td><td></td><td>${fmtInt(a.n)}</td>${cellPct(a.md, a.n)}${cellPct(a.cl, a.n)}${cellPct(a.nr, a.n)}${cellPct(a.aer, a.n)}<td>${money(a.rev)}</td><td>${money(a.deals ? a.rev / a.deals : null)}</td></tr>`;
+  html += `<tr class="totalrow"><td>Team</td><td></td><td>${fmtInt(a.n)}</td>${cellPctP(a.md, a.n, a.pmd)}${cellPctP(a.cl, a.n, a.pcl)}${cellPct(a.nr, a.n)}${cellPct(a.aer, a.n)}<td>${money(a.rev)}</td><td>${money(a.deals ? a.rev / a.deals : null)}</td></tr>`;
   html += `</tbody></table><p class="note" style="margin:10px 4px 0">Revenue and AOV count deals that closed in the date range. The same deal also shows under the AE who closed it.</p>`;
   $("sdrTable").innerHTML = html;
 
@@ -2079,7 +2149,7 @@ function renderSDR(base, r) {
   const labels = buckets.map(bucketLabel);
   const rowsC = people.filter(s => ser.has(s.name)).map(s => ({ p: s, data: ser.get(s.name).map(acc => acc.n >= 3 ? m.val(acc) : null) }));
   $("sdrChartTitle").textContent = `${m.label} by ${S.group}`;
-  const ds = peopleTrend("sdr", labels, rowsC, teamSer ? { label: "SDR team", data: teamSer.map(acc => m.val(acc)) } : null, v => pct(v, 0), S.focusSDR, "data-focus-sdr");
+  const ds = peopleTrend("sdr", labels, rowsC, teamSer ? { label: "SDR team", data: teamSer.map(acc => m.val(acc)), proj: projOn(k) ? projLine(teamSer, k, teamSer.map(acc => m.val(acc))) : null } : null, v => pct(v, 0), S.focusSDR, "data-focus-sdr");
   $("sdrDataTable").hidden = !SHOW_TABLE.sdr;
   if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, ds, v => pct(v));
 
@@ -2143,7 +2213,8 @@ function renderAE(base, r) {
   const teamData = tSer ? tSer.map(acc => { const v = aeBucketVal(k, acc); return k === "rev" && v != null ? v / (people.length || 1) : v; }) : null;
   $("aeChartTitle").textContent = `${m.label} by ${S.group}, per AE`;
   $("aeChartSub").textContent = `${scope.label.charAt(0).toUpperCase() + scope.label.slice(1)}, ${m.basis === "close" ? "by close date" : "by lead date"}. The black line is ${k === "rev" ? "the average per AE" : "all AEs together"}. Click a name to hide or show its line.`;
-  const ds = peopleTrend("ae", labels, rowsC, teamData ? { label: k === "rev" ? "Average per AE" : "All AEs", data: teamData } : null, v => fmtMetric(k, v, true), S.focusAE, "data-focus-ae");
+  const teamProj = teamData && projOn(k) ? projLine(tSer, k, teamData) : null;
+  const ds = peopleTrend("ae", labels, rowsC, teamData ? { label: k === "rev" ? "Average per AE" : "All AEs", data: teamData, proj: teamProj } : null, v => fmtMetric(k, v, true), S.focusAE, "data-focus-ae");
   $("aeDataTable").hidden = !SHOW_TABLE.ae;
   if (SHOW_TABLE.ae) $("aeDataTable").innerHTML = dataTableHTML(labels, ds, v => fmtMetric(k, v));
 
@@ -2158,11 +2229,11 @@ function renderAE(base, r) {
       html += `<tr class="person${S.focusAE === s.name ? " focus" : ""}" data-ae="${esc(s.name)}" tabindex="0">
         <td><i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:8px;background:${personColor(s)}"></i><span class="who">${esc(s.name)}</span>${s.chip ? `<span class="chip">${esc(s.chip)}</span>` : ""}</td>
         <td>${money(x.rev)}</td><td>${fmtInt(x.deals)}</td><td>${money(x.deals ? x.rev / x.deals : null)}</td>
-        <td>${fmtInt(x.n)}</td>${cellPct(x.md, x.n)}${cellPct(x.cl, x.n)}${cellPct(x.mdc, x.md)}</tr>`;
+        <td>${fmtInt(x.n)}</td>${cellPctP(x.md, x.n, x.pmd)}${cellPctP(x.cl, x.n, x.pcl)}${cellPct(x.mdc, x.md)}</tr>`;
     }
   }
   const tot = accumulate(leads.filter(L => names.has(L.ae)), r);
-  html += `<tr class="totalrow"><td>All AEs</td><td>${money(tot.rev)}</td><td>${fmtInt(tot.deals)}</td><td>${money(tot.deals ? tot.rev / tot.deals : null)}</td><td>${fmtInt(tot.n)}</td>${cellPct(tot.md, tot.n)}${cellPct(tot.cl, tot.n)}${cellPct(tot.mdc, tot.md)}</tr>`;
+  html += `<tr class="totalrow"><td>All AEs</td><td>${money(tot.rev)}</td><td>${fmtInt(tot.deals)}</td><td>${money(tot.deals ? tot.rev / tot.deals : null)}</td><td>${fmtInt(tot.n)}</td>${cellPctP(tot.md, tot.n, tot.pmd)}${cellPctP(tot.cl, tot.n, tot.pcl)}${cellPct(tot.mdc, tot.md)}</tr>`;
   html += `</tbody></table><p class="note" style="margin:10px 4px 0">Showing ${scope.label}. Change it with the Leads switch at the top of this tab. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
   $("aeTable").innerHTML = html;
 
