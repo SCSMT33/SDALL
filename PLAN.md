@@ -97,6 +97,19 @@ Blend of two simple methods, 60% B / 40% A (backtested best; A alone runs low in
 - Time zones: Airtable UTC+3, Aircall calls/SMS and email UTC, Respond.io UTC+4.
 - Closed-deals donut (Overview only): new-customer deals ("New deal" checked) closed in the date range, one per client, not closed within 1h of coming in, lead created after tracking started. Touches counted until the client first replied (email/WhatsApp from them, or a 30s+ answered call) or until close; SDR touches stop at the AE's first touch. Toggles: include "no touch", include Andrew.
 
+## Pipeline hygiene (SDRs tab, AEs tab)
+Same rules as the monthly report's "Pipeline Hygiene" page. Snapshot of every open lead on the Airtable export day (day of the newest lead), all creation months; the date and repeat filters don't apply, the Leads (B2B) and Desk filters do.
+- Open = not Closed, Lost, Disqualified, refunded or "Only Deposit Collected".
+- SDR book = SDR Owner filled (SDRs tab). AE book = no SDR Owner (AEs tab).
+- Compliant = Next Human Action filled + Next Human Action Date filled + date on or after 00:00 on the export day. Anything else is failing.
+- No action type = action empty. Date lapsed = date before the export day. Nothing scheduled = action and date both empty. Columns can overlap.
+- Shoot in 30 days, failing = failing leads with a shoot date in the next 30 days. Shoot passed, still open = open leads whose shoot date is past.
+- At-risk value = quoted price (USD) of failing leads.
+- Bulk-edit check = distinct Next Human Action Date values and the biggest group sharing one value. AEs: every open lead they own (SDR leads included). SDRs: their SDR book.
+
+## Export PDF
+Header button. Prints the current tab exactly as shown (light colours), after a first page listing the tab, every filter setting and each loaded data file (size, dates covered, what it holds and feeds).
+
 ## Rules
 - Duplicate records (DQ reason "Duplicate record") and spam/test submissions (MQL DQ reason Spam/Test) are not leads: left out of every count.
 - Every % shows its count next to it, e.g. "22% (of 41)".

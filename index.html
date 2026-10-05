@@ -389,6 +389,27 @@ details.projdef summary { cursor: pointer; width: fit-content; }
 details.projdef div { margin-top: 4px; max-width: 110ch; }
 .projtag { color: var(--proj1); font-weight: 600; font-size: 11.5px; margin-left: 4px; }
 .checkdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.printonly { display: none; }
+.printinfo h1 { font-size: 20px; margin: 0 0 2px; }
+.printinfo .note { margin: 0 0 10px; }
+.printinfo table { margin-bottom: 12px; }
+.printinfo td, .printinfo th { padding: 4px 8px; font-size: 11.5px; text-align: left !important; vertical-align: top; white-space: normal !important; overflow-wrap: anywhere; }
+.printinfo table.srcs { table-layout: fixed; }
+.printinfo table.srcs td:last-child, .printinfo table.srcs th:last-child { width: 45%; }
+.printinfo table.flt { width: auto; }
+@media print {
+  @page { size: landscape; margin: 9mm; }
+  html, body { background: #fff !important; }
+  .printonly { display: block; }
+  .top { position: static !important; box-shadow: none !important; }
+  .top .filters, .data-status, #tabs, .linkbtn, .popover, .dropveil, #emptyState, .matlbl { display: none !important; }
+  .card, .tile, details { break-inside: avoid; }
+  .sechead { break-after: avoid; }
+  #printInfo { break-after: page; }
+  .datatable { max-height: none !important; overflow: visible !important; }
+  .tablewrap { overflow: visible !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -409,6 +430,7 @@ details.projdef div { margin-top: 4px; max-width: 110ch; }
           <button class="btn" id="dataBtn" aria-haspopup="true" aria-expanded="false"><i></i><span id="dataBtnTxt">Data files</span></button>
           <div class="popover datapop" id="dataPop" hidden></div>
         </div>
+        <button class="btn" id="pdfBtn" title="Save this tab as a PDF, exactly as it is shown, with the filters and data used" hidden>Export PDF</button>
         <button class="btn primary" id="loadBtn">Load files</button>
         <button class="btn ghost" id="clearBtn" hidden>Clear</button>
         <input type="file" id="fileInput" accept=".csv,text/csv" multiple hidden>
@@ -466,6 +488,7 @@ details.projdef div { margin-top: 4px; max-width: 110ch; }
 </header>
 
 <main class="wrap">
+  <section id="printInfo" class="printonly"></section>
   <section id="emptyState" class="empty" hidden>
     <h2>Drop your exports anywhere on this page</h2>
     <p>The dashboard reads the files right here in your browser. Nothing is uploaded. It remembers the last files you loaded, so next time it opens with your data.</p>
@@ -575,6 +598,7 @@ details.projdef div { margin-top: 4px; max-width: 110ch; }
       </div>
       <div class="tablewrap" id="sdrTable"></div>
     </div>
+    <div id="sdrHY"></div>
     <div class="sechead sub2">
       <div><h2>Calls &amp; cadence</h2><p id="sdrCallsNote">Calls from the Aircall export, matched to leads by phone number.</p></div>
     </div>
@@ -639,6 +663,7 @@ details.projdef div { margin-top: 4px; max-width: 110ch; }
       </div>
       <div class="tablewrap" id="aeTable"></div>
     </div>
+    <div id="aeHY"></div>
     <div class="sechead sub2">
       <div><h2>Calls &amp; cadence</h2><p id="aeCallsNote">Calls from the Aircall export, matched to leads by phone number.</p></div>
     </div>
@@ -1031,6 +1056,12 @@ function buildLeads(rows) {
       ph: phone9(r["Phone"]),
       // The tag only describes deals; leads that haven't closed fall back to the email match below.
       repeat: false, tagRepeat: tag && (isClosedStatus || isRefund) ? tag.isRepeat(r[tag.col]) : null, calls: null,
+      // Pipeline hygiene (open book): next step and shoot date
+      nha: String(r["Next Human Action"] || "").trim(),
+      nhaRaw: String(r["Next Human Action Date"] || "").trim(),
+      nhaDate: parseLongDate(r["Next Human Action Date"]),
+      shoot: parseLongDate(r["Shoot date"]) || parseLongDate(r["local_shoot_date"]),
+      paidOpen: status === "only deposit collected",
     });
   }
   // No tag column: repeat client = same email already had an earlier closed lead.
@@ -1910,6 +1941,7 @@ function renderStatus() {
   $("dataBtnTxt").textContent = `Data files · ${n} of ${total}`;
   $("dataBtn").className = "btn" + (n === total ? " ok" : n ? " part" : "");
   $("clearBtn").hidden = !n;
+  $("pdfBtn").hidden = !LEADS.length;
   if (!$("dataPop").hidden) renderDataPop();
 }
 function renderDataPop() {
@@ -2174,6 +2206,7 @@ function renderSDR(base, r) {
   $("sdrDataTable").hidden = !SHOW_TABLE.sdr;
   if (SHOW_TABLE.sdr) $("sdrDataTable").innerHTML = dataTableHTML(labels, ds, v => pct(v));
 
+  renderHygiene("sdr", "SDR");
   renderCalls("sdr", "SDR", people, (L, nm) => L.sdr === nm, base, r);
   renderSpeed("sdr", "SDR", base, r);
   renderFollowUp("sdr", "SDR", base, r);
@@ -2258,6 +2291,7 @@ function renderAE(base, r) {
   html += `</tbody></table><p class="note" style="margin:10px 4px 0">Showing ${scope.label}. Change it with the Leads switch at the top of this tab. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
   $("aeTable").innerHTML = html;
 
+  renderHygiene("ae", "AE");
   renderCalls("ae", "AE", people, (L, nm) => scope.test(L) && L.ae === nm, base, r);
   renderSpeed("ae", "AE", base, r);
   renderFollowUp("ae", "AE", base, r);
@@ -2266,6 +2300,74 @@ function renderAE(base, r) {
   $("aeReasonWho").innerHTML = [`<button data-v="all" class="${who === "all" ? "on" : ""}">All AEs</button>`]
     .concat(people.map(p => `<button data-v="${esc(p.name)}" class="${who === p.name ? "on" : ""}"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${personColor(p)}"></i>${esc(p.name)}</button>`)).join("");
   renderReasons("ae", leads.filter(L => inR(L.created, r) && (who !== "all" ? L.ae === who : names.has(L.ae))), who === "all" ? "all AEs" : who);
+}
+
+/* ---------- Pipeline hygiene (same rules as the monthly report's "Pipeline Hygiene" page) ----------
+   Open book on the export day, every creation month. Compliant = next action type filled + next action date filled
+   + that date not before 00:00 on the export day. Anything else is failing. */
+function hygieneDay() { const d = LEADS[LEADS.length - 1].created; return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function hygieneOpen() {
+  return LEADS.filter(L => L.bucket === "open" && !L.paidOpen && !L.junk && (!S.b2b || L.b2b) && (S.desk === "all" || L.desk === S.desk));
+}
+function hygieneAcc(leads, day) {
+  const in30 = new Date(day.getTime() + 30 * 86400e3);
+  const h = { n: 0, ok: 0, noAct: 0, lapsed: 0, nothing: 0, noDate: 0, s30: 0, past: 0, risk: 0, fail: 0 };
+  for (const L of leads) {
+    h.n++;
+    const noAct = !L.nha, noDate = !L.nhaDate, lapsed = !!L.nhaDate && L.nhaDate < day;
+    const fail = noAct || noDate || lapsed;
+    if (noAct) h.noAct++;
+    if (lapsed) h.lapsed++;
+    if (noAct && noDate) h.nothing++;
+    else if (noDate) h.noDate++;
+    if (L.shoot && L.shoot < day) h.past++;
+    if (!fail) { h.ok++; continue; }
+    h.fail++; h.risk += L.price;
+    if (L.shoot && L.shoot >= day && L.shoot < in30) h.s30++;
+  }
+  return h;
+}
+function bulkAcc(leads) {
+  const c = new Map();
+  for (const L of leads) if (L.nhaRaw) c.set(L.nhaRaw, (c.get(L.nhaRaw) || 0) + 1);
+  return { n: leads.length, distinct: c.size, largest: c.size ? Math.max(...c.values()) : 0 };
+}
+function renderHygiene(pre, role) {
+  const el = $(pre + "HY");
+  const day = hygieneDay(), open = hygieneOpen();
+  const people = activePeople(role === "SDR" ? SDRS : AES);
+  const book = role === "SDR" ? open.filter(L => L.sdr) : open.filter(L => !L.sdr);
+  const own = (L, nm) => role === "SDR" ? L.sdr === nm : L.ae === nm;
+  const rows = people.map(p => ({ p, h: hygieneAcc(book.filter(L => own(L, p.name)), day) })).filter(o => o.h.n);
+  const tot = hygieneAcc(book.filter(L => people.some(p => own(L, p.name))), day);
+  const compCell = h => { const v = h.n ? h.ok / h.n : null; const col = v == null ? "" : v >= 0.9 ? "var(--good)" : v < 0.5 ? "var(--bad)" : "var(--ink)"; return `<td style="color:${col};font-weight:600">${v == null ? "—" : pct(v, 0)}</td>`; };
+  const line = (name, h, cls) => `<tr${cls ? ` class="${cls}"` : ""}><td>${name}</td><td>${fmtInt(h.n)}</td>${compCell(h)}<td>${fmtInt(h.noAct)}</td><td>${fmtInt(h.lapsed)}</td><td>${fmtInt(h.nothing)}</td><td>${fmtInt(h.s30)}</td><td>${fmtInt(h.past)}</td><td>${money(h.risk, true)}</td></tr>`;
+  let t = `<table class="futable"><thead><tr><th>${role}</th><th>Open leads</th><th>Compliant</th><th>No action type</th><th>Date lapsed</th><th>Nothing scheduled</th><th>Shoot in 30 days, failing</th><th>Shoot passed, still open</th><th>At-risk value</th></tr></thead><tbody>`;
+  for (const { p, h } of rows) t += line(`<span class="who">${esc(p.name)}</span>`, h);
+  t += line(role === "SDR" ? "SDR book" : "AE book", tot, "totalrow") + `</tbody></table>`;
+  // Bulk-edit check: AEs over every open lead they own (SDR leads included, as in the report); SDRs over their SDR book.
+  const bulkPool = role === "SDR" ? open.filter(L => L.sdr) : open;
+  let bt = `<table class="futable"><thead><tr><th>${role === "SDR" ? "SDR" : "Owner (all open leads)"}</th><th>Open leads</th><th>Distinct follow-up dates</th><th>Largest block on one date</th></tr></thead><tbody>`;
+  for (const p of people) {
+    const b = bulkAcc(bulkPool.filter(L => own(L, p.name)));
+    if (!b.n) continue;
+    bt += `<tr><td><span class="who">${esc(p.name)}</span></td><td>${fmtInt(b.n)}</td><td>${fmtInt(b.distinct)}</td><td>${fmtInt(b.largest)}</td></tr>`;
+  }
+  bt += `</tbody></table>`;
+  const bookName = role === "SDR" ? "SDR-managed book: SDR Owner filled" : "AE-managed book: no SDR Owner";
+  el.innerHTML = `<div class="sechead sub2"><div><h2>Pipeline hygiene</h2><p>Snapshot of every open lead on ${fmtDate(day)} (the export day), all creation months. Not affected by the date filter.</p></div></div>
+    <div class="card"><div class="cardhead"><div><h3>${bookName}</h3><div class="sub">${fmtInt(tot.n)} open leads · ${tot.n ? pct(tot.ok / tot.n, 0) : "—"} compliant · ${fmtInt(tot.fail)} failing, ${money(tot.risk, true)} at risk${tot.noDate ? ` · ${fmtInt(tot.noDate)} failing with an action but no date` : ""}</div></div></div>
+      <div class="tablewrap">${t}</div></div>
+    <div class="card"><div class="cardhead"><div><h3>Bulk-edit check: can the score be trusted?</h3><div class="sub">Few distinct dates on a big book = dates set in bulk. They pass for a few days, then lapse together. Read it next to Compliant: a high score built on a few dates won't last.</div></div></div>
+      <div class="tablewrap">${bt}</div></div>
+    <details class="projdef" style="margin-top:4px"><summary>How these are counted</summary><div>
+      <b>Open</b> = not Closed, Lost, Disqualified or refunded. ${S.b2b ? "B2B leads only (Leads filter). " : "All leads (Leads filter). "}Desk filter applies. Date and repeat filters don't.<br>
+      <b>Compliant</b> = Next Human Action filled + Next Human Action Date filled + that date on or after 00:00 on ${fmtDate(day)}. Anything else is <b>failing</b>.<br>
+      <b>No action type</b> = Next Human Action empty. <b>Date lapsed</b> = the date is before ${fmtDate(day)}. <b>Nothing scheduled</b> = both empty. A lead can be in more than one column; leads with an action but no date are failing too (shown in the line above the table).<br>
+      <b>Shoot in 30 days, failing</b> = failing leads with a shoot date in the next 30 days. <b>Shoot passed, still open</b> = every open lead whose shoot date is already past.<br>
+      <b>At-risk value</b> = total quoted price (Price column, in USD) of the failing leads.<br>
+      <b>Bulk-edit check</b> = how many different follow-up date/time values the person's open leads have, and how many leads share the most common one. ${role === "AE" ? "For AEs this counts every open lead they own, SDR leads included." : ""}
+    </div></details>`;
 }
 
 /* ---------- Habits ---------- */
@@ -2739,6 +2841,52 @@ document.addEventListener("keydown", e => {
 document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches("tr.person")) e.target.click(); });
 $("dateFrom").addEventListener("change", e => { S.from = e.target.value; savePrefs(); render(); });
 $("dateTo").addEventListener("change", e => { S.to = e.target.value; savePrefs(); render(); });
+$("pdfBtn").addEventListener("click", exportPDF);
+function selText(id) { const el = $(id); return el && el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : ""; }
+function dataSourcesHTML() {
+  const span = arr => { if (!arr.length) return "—"; let lo = Infinity, hi = -Infinity; for (const x of arr) { if (x.t < lo) lo = x.t; if (x.t > hi) hi = x.t; } return `${fmtDate(localDay(lo))} – ${fmtDate(localDay(hi))}`; };
+  const rows = [];
+  const add = (name, file, count, dates, what) => rows.push(`<tr><td><b>${name}</b>${file ? `<br><span class="note">${esc(file)}</span>` : ""}</td><td>${count}</td><td>${dates}</td><td>${what}</td></tr>`);
+  const miss = (name, what) => rows.push(`<tr><td><b>${name}</b></td><td colspan="2" style="color:var(--muted)">Not loaded</td><td>${what}</td></tr>`);
+  if (META.airtable) add("Airtable leads", META.airtable.name, `${fmtInt(LEADS.length)} leads`, `Created ${fmtDate(LEADS[0].created)} – ${fmtDate(LEADS[LEADS.length - 1].created)}`, "One row per lead: owner (AE), SDR owner, status, meeting status, request type, price, created / closed / shoot dates, next action. Powers every tile, chart and the pipeline hygiene. Older months hold only closed deals, so rates start " + (FULL_START ? fmtDate(FULL_START) : "where every lead is present") + ".");
+  if (META.aircall) add("Aircall calls", META.aircall.name, `${fmtInt(CALLS.length)} calls`, span(CALLS), "Every call on the SDR and AE lines: rep, number, answered, talk time. Calls & cadence, speed to lead, follow-up."); else miss("Aircall calls", "Calls.");
+  if (META.sms) add("Aircall SMS", META.sms.name, `${fmtInt(SMS.length)} texts`, span(SMS), "Texts sent from Aircall (US desk). Speed to lead (if texts are switched on) and follow-up."); else miss("Aircall SMS", "Texts.");
+  if (META.wa) add("Respond.io messages", META.wa.name, `${fmtInt(WA_MSGS.length)} messages`, span(WA_MSGS), "WhatsApp messages in and out (OUS desk). Follow-up and speed to lead."); else miss("Respond.io messages", "WhatsApp.");
+  if (META.contacts) add("Respond.io contacts", META.contacts.name, `${fmtInt(CONTACTS.size)} contacts`, "—", "Phone and email per WhatsApp contact, to match messages to leads."); else miss("Respond.io contacts", "Matches WhatsApp to leads.");
+  if (META.users) add("Respond.io users", META.users.name, `${fmtInt(RUSERS.size)} users`, "—", "Names the rep who sent each WhatsApp message."); else miss("Respond.io users", "Names WhatsApp senders.");
+  if (EMAIL_FILES.size) {
+    let n = 0; const ids = new Set(); let lo = Infinity, hi = -Infinity;
+    for (const rws of EMAIL_FILES.values()) for (const x of rws) { if (ids.has(x.mid)) continue; ids.add(x.mid); n++; if (x.t < lo) lo = x.t; if (x.t > hi) hi = x.t; }
+    const boxes = FU ? [...FU.cov.mailbox].sort((x, y) => x[1].s - y[1].s).map(([nm, c]) => `${nm.split(" ")[0]} from ${fmtDate(localDay(c.s))}`).join(", ") : "";
+    add("Email activity", `${EMAIL_FILES.size} monthly file${EMAIL_FILES.size > 1 ? "s" : ""}`, `${fmtInt(n)} emails`, `${fmtDate(localDay(lo))} – ${fmtDate(localDay(hi))}`, "Emails sent and received by team mailboxes (duplicates removed; automatic emails detected and shown separately). Follow-up and speed to lead." + (boxes ? ` Mailboxes: ${esc(boxes)}.` : ""));
+  } else miss("Email activity", "Emails.");
+  return `<table class="srcs"><thead><tr><th>Data</th><th>Size</th><th>Dates covered</th><th>What's in it / what it feeds</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+}
+function fillPrintInfo() {
+  const tabName = { overview: "Overview", sdr: "SDRs", ae: "AEs" }[S.tab];
+  const r = getRange();
+  const f = [
+    ["Tab", tabName], ["People", $("peopleBtn").textContent], ["Dates", `${selText("fDate")} (${rangeText(r)})`],
+    ["Leads", selText("fLeads")], ["Desk", selText("fDesk")], ["Refunds", selText("fRefunds")], ["Repeat clients", selText("fRepeat")], ["Group by", selText("fGroup")],
+    ["Projections", S.matProj ? "On (green numbers)" : "Off"],
+  ];
+  if (S.tab === "overview") f.splice(2, 0, ["View", selText("fView")]);
+  if (S.tab === "ae") f.push(["AE leads", selText("fAeScope")]);
+  $("printInfo").innerHTML = `<div class="printinfo"><h1>Shootday Sales Pulse · ${tabName}</h1>
+    <p class="note">Exported ${fmtDate(new Date())}. Everything on the next pages is shown exactly as it was on screen, with these settings.</p>
+    <table class="flt"><tbody>${f.map(([k, v]) => `<tr><th style="width:150px">${k}</th><td>${esc(v)}</td></tr>`).join("")}</tbody></table>
+    <h3 style="margin:6px 0">Data used</h3>${dataSourcesHTML()}
+    <p class="note">Times: Airtable is Romania time (UTC+3); calls, texts and emails are converted to it. Money is USD (other currencies at the ECB monthly rate). Pipeline hygiene is a snapshot of open leads on the Airtable export day and ignores the date filter.</p></div>`;
+}
+function exportPDF() {
+  fillPrintInfo();
+  const root = document.documentElement, prevTheme = root.getAttribute("data-theme"), prevTitle = document.title;
+  document.title = `Shootday Sales Pulse - ${{ overview: "Overview", sdr: "SDRs", ae: "AEs" }[S.tab]} - ${new Date().toISOString().slice(0, 10)}`;
+  root.setAttribute("data-theme", "light"); // print on white, whatever the screen theme
+  const restore = () => { if (prevTheme == null) root.removeAttribute("data-theme"); else root.setAttribute("data-theme", prevTheme); document.title = prevTitle; };
+  window.addEventListener("afterprint", restore, { once: true });
+  setTimeout(() => window.print(), 350);
+}
 $("loadBtn").addEventListener("click", () => $("fileInput").click());
 $("loadBtn2").addEventListener("click", () => $("fileInput").click());
 $("fileInput").addEventListener("change", e => { handleFiles([...e.target.files]); e.target.value = ""; });
