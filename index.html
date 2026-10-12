@@ -1430,10 +1430,14 @@ const isClosed = L => L.bucket === "closed" || (S.refunds && L.bucket === "refun
 function peopleOK(L) {
   if (!S.excluded.length) return true;
   const ex = new Set(S.excluded);
-  if (ex.has(L.ae)) return false;
-  if (L.sdr && ex.has(L.sdr)) return false;
-  if (ex.has(FORMER) && !ROSTER_BY_NAME.has(L.ae)) return false;
-  return true;
+  // Every lead has an AE; SDR leads also have an SDR. On the SDRs tab the SDR decides, on the AEs tab the AE decides,
+  // and on the Overview a lead stays if anyone ticked works it.
+  const aeOn = !ex.has(L.ae) && !(ex.has(FORMER) && !ROSTER_BY_NAME.has(L.ae));
+  if (!L.sdr) return aeOn;
+  const sdrOn = !ex.has(L.sdr);
+  if (S.tab === "sdr") return sdrOn;
+  if (S.tab === "ae") return aeOn;
+  return sdrOn || aeOn;
 }
 const activePeople = list => list.filter(p => (S.desk === "all" || p.desk === S.desk) && !S.excluded.includes(p.name));
 function baseLeads(ignoreB2B) {
@@ -2710,7 +2714,7 @@ function renderPeoplePop() {
     <h5>AEs · US</h5>${AES.filter(a => a.desk === "US").map(opt).join("")}
     <h5>AEs · OUS</h5>${AES.filter(a => a.desk === "OUS").map(opt).join("")}
     <h5>Other</h5><label class="opt"><input type="checkbox" data-person="${FORMER}"${ex.has(FORMER) ? "" : " checked"}>Former team members<small>e.g. Mateo</small></label>
-    <p class="note" style="margin:10px 6px 2px">Unticking someone removes their leads and deals from every number, chart and table.</p>`;
+    <p class="note" style="margin:10px 6px 2px">Unticking someone removes their leads and deals. On the SDRs tab a lead follows its SDR, on the AEs tab its AE, and on the Overview it stays if anyone ticked works it.</p>`;
 }
 function syncControls() {
   document.querySelectorAll("select[data-key]").forEach(sel => { sel.value = String(S[sel.dataset.key]); });
