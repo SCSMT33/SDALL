@@ -107,6 +107,9 @@ Same rules as the monthly report's "Pipeline Hygiene" page. Snapshot of every op
 - At-risk value = quoted price (USD) of failing leads.
 - Bulk-edit check = distinct Next Human Action Date values and the biggest group sharing one value. AEs: every open lead they own (SDR leads included). SDRs: their SDR book.
 
+## Created manually (AEs tab)
+Checkbox next to "Add projections". Manual leads = Airtable `Flow` = "Manual" (typed in by hand, often after the client agreed). Unticked: they leave every number on the AEs tab, including pipeline hygiene. Saved with the other preferences.
+
 ## Export PDF
 Header button. Prints the current tab exactly as shown (light colours), after a first page listing the tab, every filter setting and each loaded data file (size, dates covered, what it holds and feeds).
 

@@ -635,6 +635,7 @@ details.projdef div { margin-top: 4px; max-width: 110ch; }
   <section class="tabpane" id="pane-ae" hidden>
     <div class="sechead">
       <div><h2>Account Executives</h2><p id="aeScopeNote"></p></div>
+      <label class="matlbl" title="Leads typed into Airtable by hand (Flow = Manual), often after the client already agreed. Untick to leave them out of every number on this tab."><input type="checkbox" data-fu="aeManual"> Created manually</label>
       <label class="matlbl"><input type="checkbox" data-fu="matProj"> Add projections</label>
       <div class="field"><label class="flabel" for="fAeScope">Leads</label>
         <select class="select" id="fAeScope" data-key="aeScope"><option value="direct">AE-direct leads</option><option value="sdr">From SDRs</option><option value="all">All leads</option></select>
@@ -1062,6 +1063,7 @@ function buildLeads(rows) {
       nhaDate: parseLongDate(r["Next Human Action Date"]),
       shoot: parseLongDate(r["Shoot date"]) || parseLongDate(r["local_shoot_date"]),
       paidOpen: status === "only deposit collected",
+      manual: String(r["Flow"] || "").trim().toLowerCase() === "manual",
     });
   }
   // No tag column: repeat client = same email already had an earlier closed lead.
@@ -1924,9 +1926,11 @@ function render() {
     (UNKNOWN_FX.size ? `<span style="color:var(--bad)">No rate for ${esc([...UNKNOWN_FX].join(", "))}. Counted as USD until a rate is added.</span>` : "");
   MAT = S.matProj ? maturityModel() : MAT;
   document.querySelectorAll('input[data-fu="matProj"]').forEach(i => { i.checked = !!S.matProj; });
+  document.querySelectorAll('input[data-fu="aeManual"]').forEach(i => { i.checked = S.aeManual !== false; });
   for (const id of ["ovMatNote", "sdrMatNote", "aeMatNote"]) if ($(id)) { $(id).hidden = !S.matProj; if (S.matProj) $(id).querySelector("div").innerHTML = matNote(); }
   const r = getRange();
-  const base = baseLeads();
+  let base = baseLeads();
+  if (S.tab === "ae" && S.aeManual === false) base = base.filter(L => !L.manual);
   if (S.tab === "overview") renderOverview(base, r);
   else if (S.tab === "sdr") renderSDR(base, r);
   else renderAE(base, r);
@@ -2251,7 +2255,7 @@ function aeBucketVal(k, a) {
 function renderAE(base, r) {
   const scope = AE_SCOPES[S.aeScope] || AE_SCOPES.direct;
   const leads = base.filter(scope.test);
-  $("aeScopeNote").textContent = scope.note + " Leads created in the date range; revenue by close date.";
+  $("aeScopeNote").textContent = scope.note + " Leads created in the date range; revenue by close date." + (S.aeManual === false ? " Manually created leads left out." : "");
   const a = accumulate(leads, r), p = r.prev ? accumulate(leads, r.prev) : null;
   $("aeTiles").innerHTML =
     tileHTML("rev", a, p, r, { spark: sparkVals(leads, "rev", r) }) +
@@ -2311,7 +2315,7 @@ function renderAE(base, r) {
    + that date not before 00:00 on the export day. Anything else is failing. */
 function hygieneDay() { const d = LEADS[LEADS.length - 1].created; return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function hygieneOpen() {
-  return LEADS.filter(L => L.bucket === "open" && !L.paidOpen && !L.junk && (!S.b2b || L.b2b) && (S.desk === "all" || L.desk === S.desk));
+  return LEADS.filter(L => L.bucket === "open" && !L.paidOpen && !L.junk && (!S.b2b || L.b2b) && (S.desk === "all" || L.desk === S.desk) && !(S.tab === "ae" && S.aeManual === false && L.manual));
 }
 function hygieneAcc(leads, day) {
   const in30 = new Date(day.getTime() + 30 * 86400e3);
@@ -2875,7 +2879,7 @@ function fillPrintInfo() {
     ["Projections", S.matProj ? "On (green numbers)" : "Off"],
   ];
   if (S.tab === "overview") f.splice(2, 0, ["View", selText("fView")]);
-  if (S.tab === "ae") f.push(["AE leads", selText("fAeScope")]);
+  if (S.tab === "ae") f.push(["AE leads", selText("fAeScope")], ["Created manually", S.aeManual === false ? "Left out" : "Included"]);
   $("printInfo").innerHTML = `<div class="printinfo"><h1>Shootday Sales Pulse · ${tabName}</h1>
     <p class="note">Exported ${fmtDate(new Date())}. Everything on the next pages is shown exactly as it was on screen, with these settings.</p>
     <table class="flt"><tbody>${f.map(([k, v]) => `<tr><th style="width:150px">${k}</th><td>${esc(v)}</td></tr>`).join("")}</tbody></table>
