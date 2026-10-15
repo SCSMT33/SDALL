@@ -203,6 +203,12 @@ main { padding-block: 20px 60px; }
 .sechead p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 .sechead.sub2 { margin-top: 14px; }
 .sechead.sub2 h2 { font-size: 17px; }
+/* Right-hand controls of a section head, sitting on one baseline. Without a
+   wrapper each control leans on its own margin-left:auto and they land at
+   ragged heights as soon as a head carries more than one. */
+.sechead-tools { display: flex; align-items: center; gap: 18px; margin-left: auto; flex-wrap: wrap; }
+.sechead-tools .matlbl { margin-left: 0; }
+.sechead-tools .field { display: flex; align-items: center; gap: 8px; }
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   padding: 16px 18px; box-shadow: var(--shadow); min-width: 0;
@@ -442,7 +448,7 @@ details.projdef div { margin-top: 4px; max-width: 110ch; }
         <button class="select" id="peopleBtn" aria-haspopup="true" aria-expanded="false">Everyone</button>
         <div class="popover" id="peoplePop" hidden></div>
       </div>
-      <div class="field">
+      <div class="field" id="viewField">
         <label class="flabel" for="fView">View</label>
         <select class="select" id="fView" data-key="view" title="Changes the Overview tab">
           <option value="all">Whole team</option><option value="sdr">SDR-led leads</option><option value="ae">AE-direct leads</option>
@@ -635,10 +641,12 @@ details.projdef div { margin-top: 4px; max-width: 110ch; }
   <section class="tabpane" id="pane-ae" hidden>
     <div class="sechead">
       <div><h2>Account Executives</h2><p id="aeScopeNote"></p></div>
-      <label class="matlbl" title="Leads typed into Airtable by hand (Flow = Manual), often after the client already agreed. Untick to leave them out of every number on this tab."><input type="checkbox" data-fu="aeManual"> Created manually</label>
-      <label class="matlbl"><input type="checkbox" data-fu="matProj"> Add projections</label>
-      <div class="field"><label class="flabel" for="fAeScope">Leads</label>
-        <select class="select" id="fAeScope" data-key="aeScope"><option value="direct">AE-direct leads</option><option value="sdr">From SDRs</option><option value="all">All leads</option></select>
+      <div class="sechead-tools">
+        <label class="matlbl" title="Leads typed into Airtable by hand (Flow = Manual), often after the client already agreed. Untick to leave them out of every number on this tab."><input type="checkbox" data-fu="aeManual"> Created manually</label>
+        <label class="matlbl"><input type="checkbox" data-fu="matProj"> Add projections</label>
+        <div class="field"><label class="flabel" for="fAeScope">AE leads</label>
+          <select class="select" id="fAeScope" data-key="aeScope" title="Which of the AE's leads this whole tab runs on. Separate from the Leads filter at the top, which picks B2B or everything."><option value="direct">AE-direct</option><option value="sdr">From SDRs</option><option value="all">Both</option></select>
+        </div>
       </div>
     </div>
     <div class="tiles" id="aeTiles"></div>
@@ -2241,9 +2249,9 @@ function aeMetricVal(k, x) {
   if (k === "m2c") return x.all.md ? x.all.mdc / x.all.md : null;
 }
 const AE_SCOPES = {
-  direct: { test: L => !L.sdr, label: "AE-direct leads", note: "AE-direct leads only (no SDR Owner): leads the AE works from first touch." },
-  sdr:    { test: L => !!L.sdr, label: "leads from SDRs", note: "Leads handed over by SDRs only (SDR Owner filled in)." },
-  all:    { test: () => true, label: "all leads", note: "Every lead the AE owns: their direct leads plus SDR handoffs." },
+  direct: { test: L => !L.sdr, label: "AE-direct leads", note: "Leads the AE works from first touch (no SDR Owner)." },
+  sdr:    { test: L => !!L.sdr, label: "leads from SDRs", note: "Leads handed over by an SDR (SDR Owner filled in)." },
+  all:    { test: () => true, label: "all leads", note: "Every lead the AE owns — direct plus SDR handoffs." },
 };
 function aeBucketVal(k, a) {
   if (k === "rev") return a.rev;
@@ -2255,7 +2263,7 @@ function aeBucketVal(k, a) {
 function renderAE(base, r) {
   const scope = AE_SCOPES[S.aeScope] || AE_SCOPES.direct;
   const leads = base.filter(scope.test);
-  $("aeScopeNote").textContent = scope.note + " Leads created in the date range; revenue by close date." + (S.aeManual === false ? " Manually created leads left out." : "");
+  $("aeScopeNote").textContent = scope.note + " Counted by creation date; revenue by close date." + (S.aeManual === false ? " Manually created leads left out." : "");
   const a = accumulate(leads, r), p = r.prev ? accumulate(leads, r.prev) : null;
   $("aeTiles").innerHTML =
     tileHTML("rev", a, p, r, { spark: sparkVals(leads, "rev", r) }) +
@@ -2296,7 +2304,7 @@ function renderAE(base, r) {
   }
   const tot = accumulate(leads.filter(L => names.has(L.ae)), r);
   html += `<tr class="totalrow"><td>All AEs</td><td>${money(tot.rev)}</td><td>${fmtInt(tot.deals)}</td><td>${money(tot.deals ? tot.rev / tot.deals : null)}</td><td>${fmtInt(tot.n)}</td>${cellPctP(tot.md, tot.n, tot.pmd)}${cellPctP(tot.cl, tot.n, tot.pcl)}${cellPct(tot.mdc, tot.md)}</tr>`;
-  html += `</tbody></table><p class="note" style="margin:10px 4px 0">Showing ${scope.label}. Change it with the Leads switch at the top of this tab. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
+  html += `</tbody></table><p class="note" style="margin:10px 4px 0">Showing ${scope.label}. Change it with the AE leads switch at the top of this tab. Andrew's book includes the biggest deals and most repeat business, so he isn't directly comparable.</p>`;
   $("aeTable").innerHTML = html;
 
   renderHygiene("ae", "AE");
@@ -2722,7 +2730,9 @@ function renderPeoplePop() {
 }
 function syncControls() {
   document.querySelectorAll("select[data-key]").forEach(sel => { sel.value = String(S[sel.dataset.key]); });
-  $("fView").disabled = S.tab === "sdr" || S.tab === "ae";
+  // View only means anything on Overview; the SDRs/AEs tabs already are the
+  // view. Hide it there rather than showing a greyed-out control forever.
+  $("viewField").hidden = S.tab === "sdr" || S.tab === "ae";
   const nEx = S.excluded.filter(n => n !== FORMER).length, total = ROSTER.length;
   const btn = $("peopleBtn");
   btn.textContent = !S.excluded.length ? "Everyone" : nEx === 0 ? "Everyone (no former staff)" : `${total - nEx} of ${total} people`;

@@ -45,11 +45,11 @@ All filters are dropdowns in the top bar.
 - Bottom: Why leads drop out, Lost / Disqualified switch + person picker (SDR team or one SDR)
 
 **3. AEs** (grouped by desk, Andrew flagged)
-- Leads switch: AE-direct (default) / From SDRs / All leads — applies to everything on the tab
+- AE leads switch: AE-direct (default) / From SDRs / Both — applies to everything on the tab
 - Tiles: Revenue, AOV, Meeting Done %, Lead→Deal %
 - Monthly chart (one line per AE + All AEs; Revenue, AOV, Meeting Done %, Lead→Deal %, Meeting→Close %), then per-AE table
 - Calls & cadence: same as SDRs, for AEs
-- Follow-up before disqualification (AE-only leads, whatever the Leads switch)
+- Follow-up before disqualification (AE-only leads, whatever the AE leads switch)
 - Bottom: Why leads drop out, Lost / Disqualified switch + person picker (All AEs or one AE)
 
 (The separate Habits tab was removed; its content lives on the SDRs and AEs tabs.)
